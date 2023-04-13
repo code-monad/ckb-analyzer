@@ -25,6 +25,7 @@ use p2p::{
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::num::NonZeroUsize;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
@@ -333,7 +334,7 @@ impl P2PServiceProtocol for CompactBlockCrawler {
         if context.proto_id == SupportProtocols::Relay.protocol_id()
             || context.proto_id == SupportProtocols::RelayV2.protocol_id()
         {
-            self.compact_blocks = Some(LruCache::new(2000));
+            self.compact_blocks = Some(LruCache::new(NonZeroUsize::new(2000).unwrap()));
         }
     }
 

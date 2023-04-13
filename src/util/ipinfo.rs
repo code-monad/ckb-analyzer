@@ -16,6 +16,7 @@ lazy_static! {
             token: ipinfo_io_token,
             cache_size: 10000,
             timeout: ::std::time::Duration::from_secs(365 * 24 * 60 * 60),
+            ..Default::default()
         })
         .expect("Connect to https://ipinfo.io");
         Mutex::new(ipinfo)

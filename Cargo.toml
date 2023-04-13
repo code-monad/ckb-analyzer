@@ -3,23 +3,24 @@ name = "ckb-analyzer"
 version = "0.1.5"
 license = "MIT"
 authors = ["keroro <keroroxx520@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "CKBAnalyzer"
 homepage = "https://github.com/keroro520/ckb-analyzer"
 
 [dependencies]
-ckb-logger-config = "0.101.0"
-ckb-logger-service = "0.101.0"
+ckb-logger-config = "0.108.1"
+ckb-logger-service = "0.108.1"
 
 crossbeam = { version = "0.8.0" }
 chrono = { version = "0.4.19" }
 log = { version = "0.4.11" }
-simple_logger = { version = "1.11.0", default-features = false }
+simple_logger = { version = "4.1.0", default-features = false }
 tokio-postgres = { version = "0.7.0", features = ["with-chrono-0_4", "runtime"] }
-ipinfo = { version = "0.2.0" }
+ipinfo = { version = "0.5.1" }
+ckb-util = "0.108.1"
 ckb-testkit = { git = "https://github.com/nervosnetwork/ckb-integration-test", rev = "7c4aaa6f72df4bcf4077495c6371c61dcb767890", features = ["with_subscribe"] }
 clap = { version = "2" }
-url = "1.7.2"
+url = "2.3.1"
 futures = "0.3"
 p2p = { version="0.4.0-alpha.2", package="tentacle", features = ["upnp", "parking_lot"] }
 rand = "0.8.4"
@@ -27,5 +28,5 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 regex = "1.5.4"
 dotenv = "0.15.0"
-lru = "0.6"
+lru = "0.10.0"
 lazy_static = "1.4"
