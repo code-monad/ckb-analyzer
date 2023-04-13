@@ -52,6 +52,7 @@ async fn main() {
     log::info!("CKB Node Subscription: \"{}\"", subscription_addr);
     log::info!("Topics: {:?}", topics);
 
+
     let pg_config = {
         let host = env::var_os("PGHOST")
             .or_else(|| env::var_os("POSTGRES_HOST"))
@@ -67,11 +68,11 @@ async fn main() {
                     .expect("invalid environment variable \"PGPORT\" or \"POSTGRES_PORT\"")
             })
             .unwrap_or(5432);
-        let database = env::var_os("PGDATABASE")
-            .or_else(|| env::var_os("POSTGRES_DB"))
-            .expect("requires environment variable \"PGDATABASE\" or \"POSTGRES_DB\"")
-            .to_string_lossy()
-            .to_string();
+        //let database = env::var_os("PGDATABASE")
+        //    .or_else(|| env::var_os("POSTGRES_DB"))
+        //    .expect("requires environment variable \"PGDATABASE\" or \"POSTGRES_DB\"")
+        //    .to_string_lossy()
+        //    .to_string();
         let user = env::var_os("PGUSER")
             .or_else(|| env::var_os("POSTGRES_USER"))
             .expect("requires environment variable \"PGUSER\" or \"POSTGRES_USER\"")
@@ -86,7 +87,7 @@ async fn main() {
         config
             .host(&host)
             .port(port)
-            .dbname(&database)
+            //.dbname(&database)
             .user(&user)
             .password(&password)
             .application_name("CKBAnalyzer");
@@ -107,7 +108,10 @@ async fn main() {
     let (query_sender, mut query_receiver) =
         crossbeam_channel_to_tokio_channel::channel::<String>(5000);
     let node = Node::init_from_url(&rpc_url, PathBuf::new());
+
+    log::info!("node.consensus().id = {}", format!("{}", node.consensus().id));
     let mut _connectors = Vec::new();
+
     for topic in topics {
         match topic.as_str() {
             "ChainCrawler" => {
