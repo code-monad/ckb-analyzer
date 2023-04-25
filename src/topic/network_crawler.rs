@@ -4,8 +4,10 @@ use ckb_testkit::{
     ckb_types::{packed, prelude::*},
     compress,
     connector::SharedState,
-    decompress, Node, SupportProtocols,
+    decompress, Node,
 };
+
+use ckb_network::SupportProtocols;
 use p2p::{
     builder::MetaBuilder as P2PMetaBuilder,
     bytes::{Bytes, BytesMut},
@@ -28,6 +30,7 @@ use std::convert::TryFrom;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
+use async_trait::async_trait;
 
 // TODO Adjust the parameters
 const DIAL_ONLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(1);
@@ -152,7 +155,7 @@ impl NetworkCrawler {
         ]
     }
 
-    fn received_identify(&mut self, context: P2PProtocolContextMutRef, data: Bytes) {
+    fn received_identify(&mut self, context: P2PProtocolContextMutRef<'_>, data: Bytes) {
         match packed::IdentifyMessage::from_compatible_slice(data.as_ref()) {
             Ok(message) => {
                 match packed::Identify::from_compatible_slice(
@@ -269,7 +272,7 @@ impl NetworkCrawler {
         }
     }
 
-    fn connected_discovery(&mut self, context: P2PProtocolContextMutRef, protocol_version: &str) {
+    async fn connected_discovery(&mut self, context: P2PProtocolContextMutRef<'_>, protocol_version: &str) {
         let discovery_get_node_message = build_discovery_get_nodes(None, 1000u32, 1u32);
         if protocol_version == "0.0.1" {
             let mut codec = LengthDelimitedCodec::new();
@@ -278,49 +281,50 @@ impl NetworkCrawler {
                 .encode(discovery_get_node_message.as_bytes(), &mut bytes)
                 .expect("encode must be success");
             let message_bytes = bytes.freeze();
-            context.send_message(message_bytes).unwrap();
+            context.send_message(message_bytes).await.unwrap();
         } else {
             let message_bytes = discovery_get_node_message.as_bytes();
-            context.send_message(message_bytes).unwrap();
+            context.send_message(message_bytes).await.unwrap();
         }
     }
 }
 
+#[async_trait]
 impl P2PServiceProtocol for NetworkCrawler {
-    fn init(&mut self, context: &mut P2PProtocolContext) {
+    async fn init(&mut self, context: &mut P2PProtocolContext) {
         if context.proto_id == SupportProtocols::Sync.protocol_id() {
             context
                 .set_service_notify(
                     SupportProtocols::Sync.protocol_id(),
                     DIAL_ONLINE_ADDRESSES_INTERVAL,
                     DIAL_ONLINE_ADDRESSES_TOKEN,
-                )
+                ).await
                 .unwrap();
             context
                 .set_service_notify(
                     SupportProtocols::Sync.protocol_id(),
                     PRUNE_OFFLINE_ADDRESSES_INTERVAL,
                     PRUNE_OFFLINE_ADDRESSES_TOKEN,
-                )
+                ).await
                 .unwrap();
             context
                 .set_service_notify(
                     SupportProtocols::Sync.protocol_id(),
                     DISCONNECT_TIMEOUT_SESSION_INTERVAL,
                     DISCONNECT_TIMEOUT_SESSION_TOKEN,
-                )
+                ).await
                 .unwrap();
             context
                 .set_service_notify(
                     SupportProtocols::Sync.protocol_id(),
                     POSTGRES_ONLINE_ADDRESS_INTERVAL,
                     POSTGRES_ONLINE_ADDRESSES_TOKEN,
-                )
+                ).await
                 .unwrap();
         }
     }
 
-    fn notify(&mut self, context: &mut P2PProtocolContext, token: u64) {
+    async fn notify(&mut self, context: &mut P2PProtocolContext, token: u64) {
         match token {
             DIAL_ONLINE_ADDRESSES_TOKEN => {
                 // TODO reset notify to adjust the length of observed_addresses
@@ -450,7 +454,7 @@ impl P2PServiceProtocol for NetworkCrawler {
         }
     }
 
-    fn connected(&mut self, context: P2PProtocolContextMutRef, protocol_version: &str) {
+    async fn connected(&mut self, context: P2PProtocolContextMutRef<'_>, protocol_version: &str) {
         ckb_testkit::debug!(
             "NetworkCrawler open protocol, protocol_name: {} address: {}",
             context
@@ -465,11 +469,11 @@ impl P2PServiceProtocol for NetworkCrawler {
         }
 
         if context.proto_id() == SupportProtocols::Discovery.protocol_id() {
-            self.connected_discovery(context, protocol_version)
+            self.connected_discovery(context, protocol_version).await
         }
     }
 
-    fn disconnected(&mut self, context: P2PProtocolContextMutRef) {
+    async fn disconnected(&mut self, context: P2PProtocolContextMutRef<'_>) {
         ckb_testkit::debug!(
             "NetworkCrawler close protocol, protocol_name: {}, address: {:?}",
             context
@@ -484,7 +488,7 @@ impl P2PServiceProtocol for NetworkCrawler {
         }
     }
 
-    fn received(&mut self, context: P2PProtocolContextMutRef, data: Bytes) {
+    async fn received(&mut self, context: P2PProtocolContextMutRef<'_>, data: Bytes) {
         if context.proto_id == SupportProtocols::Discovery.protocol_id() {
             self.received_discovery(context, data)
         } else if context.proto_id == SupportProtocols::Identify.protocol_id() {
@@ -493,8 +497,9 @@ impl P2PServiceProtocol for NetworkCrawler {
     }
 }
 
+#[async_trait]
 impl P2PServiceHandle for NetworkCrawler {
-    fn handle_error(&mut self, _context: &mut P2PServiceContext, error: P2PServiceError) {
+    async fn handle_error(&mut self, _context: &mut P2PServiceContext, error: P2PServiceError) {
         match &error {
             P2PServiceError::DialerError { .. } | P2PServiceError::ProtocolSelectError { .. } => {
                 // discard
@@ -506,7 +511,7 @@ impl P2PServiceHandle for NetworkCrawler {
     }
 
     /// Handling session establishment and disconnection events
-    fn handle_event(&mut self, context: &mut P2PServiceContext, event: P2PServiceEvent) {
+    async fn handle_event(&mut self, context: &mut P2PServiceContext, event: P2PServiceEvent) {
         match event {
             P2PServiceEvent::SessionOpen {
                 session_context: session,

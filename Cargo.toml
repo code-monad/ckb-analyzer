@@ -8,6 +8,8 @@ description = "CKBAnalyzer"
 homepage = "https://github.com/keroro520/ckb-analyzer"
 
 [dependencies]
+#ckb-testkit = { git = "https://github.com/code-monad/ckb-testkit.git", features = ["with_subscribe"] }
+ckb-testkit = { path = "../ckb-testkit", features = ["with_subscribe"] }
 ckb-logger-config = "0.108.1"
 ckb-logger-service = "0.108.1"
 
@@ -18,7 +20,7 @@ simple_logger = { version = "4.1.0", default-features = false }
 tokio-postgres = { version = "0.7.0", features = ["with-chrono-0_4", "runtime"] }
 ipinfo = { version = "0.5.1" }
 ckb-util = "0.108.1"
-ckb-testkit = { git = "https://github.com/nervosnetwork/ckb-integration-test", rev = "7c4aaa6f72df4bcf4077495c6371c61dcb767890", features = ["with_subscribe"] }
+ckb-network = "0.108.1"
 clap = { version = "2" }
 url = "2.3.1"
 futures = "0.3"
@@ -30,3 +32,4 @@ regex = "1.5.4"
 dotenv = "0.15.0"
 lru = "0.10.0"
 lazy_static = "1.4"
+async-trait = "0.1"

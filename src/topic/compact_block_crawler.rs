@@ -29,7 +29,7 @@ use std::num::NonZeroUsize;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
-
+use async_trait::async_trait;
 type Ip = String;
 
 const DIAL_ONLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(1);
@@ -109,14 +109,6 @@ impl CompactBlockCrawler {
                 let meta_builder: P2PMetaBuilder = SupportProtocols::Sync.into();
                 meta_builder
                     // Only Timer, Sync, Relay make compress
-                    .before_send(compress)
-                    .before_receive(|| Some(Box::new(decompress)))
-                    .service_handle(move || P2PProtocolHandle::Callback(Box::new(self.clone())))
-                    .build()
-            },
-            {
-                let meta_builder: P2PMetaBuilder = SupportProtocols::Relay.into();
-                meta_builder
                     .before_send(compress)
                     .before_receive(|| Some(Box::new(decompress)))
                     .service_handle(move || P2PProtocolHandle::Callback(Box::new(self.clone())))
@@ -212,7 +204,7 @@ impl CompactBlockCrawler {
         }
     }
 
-    fn connected_discovery(&mut self, context: P2PProtocolContextMutRef, protocol_version: &str) {
+    async fn connected_discovery(&mut self, context: P2PProtocolContextMutRef<'_>, protocol_version: &str) {
         let message = build_discovery_get_nodes(None, 1000, 1);
         if protocol_version == "0.0.1" {
             let mut codec = LengthDelimitedCodec::new();
@@ -221,14 +213,14 @@ impl CompactBlockCrawler {
                 .encode(message.as_bytes(), &mut bytes)
                 .expect("encode must be success");
             let message_bytes = bytes.freeze();
-            context.send_message(message_bytes).unwrap();
+            context.send_message(message_bytes).await.unwrap();
         } else {
             let message_bytes = message.as_bytes();
-            context.send_message(message_bytes).unwrap();
+            context.send_message(message_bytes).await.unwrap();
         }
     }
 
-    fn connected_identify(&mut self, context: P2PProtocolContextMutRef, _protocol_version: &str) {
+    async fn connected_identify(&mut self, context: P2PProtocolContextMutRef<'_>, _protocol_version: &str) {
         let network_identifier = {
             let consensus = self.node.consensus();
             let genesis_hash = format!("{:x}", consensus.genesis_hash);
@@ -243,7 +235,7 @@ impl CompactBlockCrawler {
             listening_addresses,
             observed_address,
         );
-        context.send_message(message.as_bytes()).unwrap();
+        context.send_message(message.as_bytes()).await.unwrap();
     }
 
     fn insert_ipinfo(&mut self, ip: &str) {
@@ -320,25 +312,25 @@ impl CompactBlockCrawler {
     }
 }
 
+#[async_trait]
 impl P2PServiceProtocol for CompactBlockCrawler {
-    fn init(&mut self, context: &mut P2PProtocolContext) {
+    async fn init(&mut self, context: &mut P2PProtocolContext) {
         if context.proto_id == SupportProtocols::Sync.protocol_id() {
             context
                 .set_service_notify(
                     SupportProtocols::Sync.protocol_id(),
                     DIAL_ONLINE_ADDRESSES_INTERVAL,
                     DIAL_ONLINE_ADDRESSES_TOKEN,
-                )
+                ).await
                 .unwrap();
         }
-        if context.proto_id == SupportProtocols::Relay.protocol_id()
-            || context.proto_id == SupportProtocols::RelayV2.protocol_id()
+        if context.proto_id == SupportProtocols::RelayV2.protocol_id()
         {
             self.compact_blocks = Some(LruCache::new(NonZeroUsize::new(2000).unwrap()));
         }
     }
 
-    fn notify(&mut self, context: &mut P2PProtocolContext, token: u64) {
+    async fn notify(&mut self, context: &mut P2PProtocolContext, token: u64) {
         match token {
             DIAL_ONLINE_ADDRESSES_TOKEN => {
                 let mut rng = thread_rng();
@@ -365,7 +357,7 @@ impl P2PServiceProtocol for CompactBlockCrawler {
         }
     }
 
-    fn connected(&mut self, context: P2PProtocolContextMutRef, protocol_version: &str) {
+    async fn connected(&mut self, context: P2PProtocolContextMutRef<'_>, protocol_version: &str) {
         ckb_testkit::debug!(
             "CompactBlockCrawler open protocol, protocol_name: {} address: {}",
             context.protocols().get(&context.proto_id()).unwrap().name,
@@ -376,13 +368,13 @@ impl P2PServiceProtocol for CompactBlockCrawler {
         }
 
         if context.proto_id() == SupportProtocols::Discovery.protocol_id() {
-            self.connected_discovery(context, protocol_version)
+            self.connected_discovery(context, protocol_version).await
         } else if context.proto_id() == SupportProtocols::Identify.protocol_id() {
-            self.connected_identify(context, protocol_version)
+            self.connected_identify(context, protocol_version).await
         }
     }
 
-    fn disconnected(&mut self, context: P2PProtocolContextMutRef) {
+    async fn disconnected(&mut self, context: P2PProtocolContextMutRef<'_>) {
         ckb_testkit::debug!(
             "NetworkCrawler close protocol, protocol_name: {}, address: {}",
             context
@@ -397,19 +389,19 @@ impl P2PServiceProtocol for CompactBlockCrawler {
         }
     }
 
-    fn received(&mut self, context: P2PProtocolContextMutRef, data: Bytes) {
+    async fn received(&mut self, context: P2PProtocolContextMutRef<'_>, data: Bytes) {
         if context.proto_id == SupportProtocols::Discovery.protocol_id() {
             self.received_discovery(context, data)
-        } else if context.proto_id() == SupportProtocols::Relay.protocol_id()
-            || context.proto_id() == SupportProtocols::RelayV2.protocol_id()
+        } else if context.proto_id() == SupportProtocols::RelayV2.protocol_id()
         {
             self.received_relay(context, data)
         }
     }
 }
 
+#[async_trait]
 impl P2PServiceHandle for CompactBlockCrawler {
-    fn handle_error(&mut self, _context: &mut P2PServiceContext, error: P2PServiceError) {
+    async fn handle_error(&mut self, _context: &mut P2PServiceContext, error: P2PServiceError) {
         match &error {
             P2PServiceError::DialerError { .. } | P2PServiceError::ProtocolSelectError { .. } => {
                 // discard
@@ -424,7 +416,7 @@ impl P2PServiceHandle for CompactBlockCrawler {
     }
 
     /// Handling session establishment and disconnection events
-    fn handle_event(&mut self, _context: &mut P2PServiceContext, event: P2PServiceEvent) {
+    async fn handle_event(&mut self, _context: &mut P2PServiceContext, event: P2PServiceEvent) {
         match event {
             P2PServiceEvent::SessionOpen {
                 session_context: session,

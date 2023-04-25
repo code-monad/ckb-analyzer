@@ -35,6 +35,7 @@ impl SubscribeRejectedTransaction {
                 PoolTransactionReject::Verification(_) => "Verification",
                 PoolTransactionReject::DeclaredWrongCycles(_) => "DeclaredWrongCycles",
                 PoolTransactionReject::Expiry(_) => "Expiry",
+                PoolTransactionReject::ExceededTransactionSizeLimit(_) => "ExceededTransactionSizeLimit",
             };
             let entry = entry::SubscribedRejectedTransaction {
                 network: self.node.consensus().id.clone(),
