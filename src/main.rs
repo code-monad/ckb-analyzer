@@ -113,6 +113,7 @@ async fn main() {
         crossbeam_channel_to_tokio_channel::channel::<String>(5000);
     let network_types = networks.into_iter().map(|x| CKBNetworkType::from(x)).collect::<Vec<CKBNetworkType>>();
     let mut _connectors = Vec::new();
+
     for topic in topics {
         match topic.as_str() {
             "NetworkCrawler" => {
