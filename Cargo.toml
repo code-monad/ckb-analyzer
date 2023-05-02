@@ -30,3 +30,5 @@ regex = "1.5.4"
 dotenv = "0.15.0"
 lru = "0.10.0"
 lazy_static = "1.4"
+serde = { version = "1.0.130", features = ["derive"] }
+toml = { version = "0.7.3" }
