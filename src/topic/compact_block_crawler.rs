@@ -29,6 +29,7 @@ use std::num::NonZeroUsize;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
+use crate::topic::CKBNetworkType;
 
 type Ip = String;
 
@@ -77,7 +78,7 @@ impl CompactBlockCrawler {
         shared: Arc<RwLock<SharedState>>,
     ) -> Self {
         #[allow(clippy::mutable_key_type)]
-        let bootnodes = bootnodes(&node);
+        let bootnodes = bootnodes(CKBNetworkType::Mirana);
         let client_version = node.rpc_client().local_node_info().version;
         Self {
             node,
