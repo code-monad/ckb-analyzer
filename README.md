@@ -9,28 +9,27 @@ Visit the online dashboards at [https://ckbmonitor.bit.host/], and you can use t
 ## Getting Started
 
 ### Setup TimescaleDB and Grafana services via docker-compose
-
+*NOTE: If you use the integrated docker-compose config to deploy, this step will be automatically set-up* 
 ```shell
 $ cp docker/.env.example docker/.env
 
-$ docker-compose -f docker/docker-compose.yaml up -d
-
-$ source docker/.env && psql "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:${POSTGRES_PORT:-"5432"}" -f src/schema.sql
+$ source docker/.env && psql "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:${POSTGRES_PORT:-"5432"}" -f sql/schema.sql
 ```
 
 ### Install CKBAnalyzer
 
-Download from [releases](https://github.com/keroro520/ckb-analyzer/releases).
+```shell
+cargo install --path . -f
+```
 
 ### Run CKBAnalyzer
 
-Mostly environment variables are declared inside [`docker/.env.example`](./docker/.env.example). You can specify an environment file with `--envfile`.
+Mostly configurations are declared inside [`confit.example.toml`](./config.example.toml). You can specify an config file with `--config`.
 
 ```shell
-ckb-analyzer \
-    --node.rpc="http://127.0.0.1:8111" \
-    --node.subscription="127.0.0.1:18114" \
-    --envfile docker/.env
+# NOTE: remember to modify your custom configuration after copy
+cp config.example.toml config.toml
+ckb-analyzer --config config.toml 
 ```
 
 ---
