@@ -53,7 +53,7 @@ impl From<String> for CKBNetworkType {
         match s.as_str() {
             "mirana"|"ckb"|"main" => CKBNetworkType::Mirana,
             "pudge"|"ckb_testnet"|"test" => CKBNetworkType::Pudge,
-            "dev" => CKBNetworkType::Dev,
+            "dev"|"ckb_dev" => CKBNetworkType::Dev,
             _ => unreachable!(),
         }
     }
@@ -64,7 +64,7 @@ impl CKBNetworkType {
         match self {
             CKBNetworkType::Mirana => "ckb".to_string(),
             CKBNetworkType::Pudge => "ckb_testnet".to_string(),
-            CKBNetworkType::Dev => "dev".to_string(),
+            CKBNetworkType::Dev => "ckb_dev".to_string(),
         }
     }
 }
