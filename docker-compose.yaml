@@ -1,0 +1,55 @@
+version: '3'
+
+# TODO: all healthycheck on ckb-mainnet and ckb-testnet, then do healthcheck before starting ckb-analyzer
+
+services:
+  postgresql:
+    container_name: ckb-analyzer-postgresql
+    build: ./sql
+    user: postgres
+    environment:
+      - POSTGRES_DB=ckb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./data/postgresql/var/lib/postgresql/data:/var/lib/postgresql/data"
+      - "./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql"
+      - "./sql/init_db.sh:/docker-entrypoint-initdb.d/002_init_db_setup.sh"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  ckb-analyzer:
+    container_name: ckb-analyzer-networks
+    depends_on: # Needs to start after db
+      postgresql:
+        condition: service_healthy
+    build: .
+    volumes:
+      - "./ckb-analyzer.toml:/etc/ckb-analyzer/config.toml"
+    command: 
+      - "/bin/ckb-analyzer"
+      - "--config"
+      - "/etc/ckb-analyzer/config.toml"
+    extra_hosts:
+      # use `host.docker.internal` as host DNS name
+      - "host.docker.internal:host-gateway"
+
+  marci:
+    container_name: ckb-analyzer-marci
+    depends_on:
+      - ckb-analyzer
+    build: ./frontend/Marci
+    ports:
+      - "1800:1800"
+    command:
+      - "/app/marci/marci"
+      - "--db-url"
+      - "postgresql://postgres:postgres@postgresql/ckb"
+      - "--bind"
+      - "0.0.0.0:1800"
