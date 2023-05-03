@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 echo "Init db!"
-psql -U postgres -f /docker-entrypoint-initdb.d/schema.sql
+POSTGRES_DB=ckb psql -U postgres  -f /docker-entrypoint-initdb.d/schema.sql
