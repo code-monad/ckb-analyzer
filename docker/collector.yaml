@@ -18,7 +18,7 @@ services:
       retries: 5
     restart: always
 
-  ckb-analyzer-mainnet:
+  ckb-analyze:
     container_name: ckb-analyzer-networks
     depends_on: # Needs to start after db
       - postgresql
@@ -32,3 +32,15 @@ services:
     extra_hosts:
       # use `host.docker.internal` as host DNS name
       - "host.docker.internal:host-gateway"
+
+  marci:
+    container_name: ckb-analyzer-marci
+    depends_on:
+      - ckb-analyze
+    build: ../frontend/Marci
+    command:
+      - "/bin/marci"
+      - "--db-url"
+      - "postgresql://postgres:postgres@postgresql/ckb"
+      - "--bind"
+      - "0.0.0.0:1800"
