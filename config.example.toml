@@ -1,0 +1,10 @@
+networks = ["mirana", "pudge"]
+ipinfo_io_token = "" # You can set your ipinfo.io api token here but you can leave it empty and use env variable IPINFO_IO_TOKEN instead
+
+# Postgres Connection Config
+[db]
+host = "127.0.0.1"
+port = 5432
+user = "postgres"
+password = "postgres"
+database = "ckb"

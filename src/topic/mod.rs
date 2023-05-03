@@ -21,3 +21,4 @@ pub(crate) use retention_transaction_crawler::RetentionTransactionCrawler;
 pub(crate) use subscribe_new_transaction::SubscribeNewTransaction;
 pub(crate) use subscribe_proposed_transaction::SubscribeProposedTransaction;
 pub(crate) use subscribe_rejected_transaction::SubscribeRejectedTransaction;
+pub(crate) use network_crawler::CKBNetworkType;

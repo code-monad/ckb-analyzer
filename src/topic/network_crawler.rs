@@ -41,6 +41,34 @@ const POSTGRES_ONLINE_ADDRESSES_TOKEN: u64 = 4;
 
 const ADDRESS_TIMEOUT: Duration = Duration::from_secs(30);
 
+#[derive(Copy, Clone, Debug, serde::Deserialize)]
+pub enum CKBNetworkType {
+    Mirana,
+    Pudge,
+    Dev
+}
+
+impl From<String> for CKBNetworkType {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "mirana"|"ckb"|"main" => CKBNetworkType::Mirana,
+            "pudge"|"ckb_testnet"|"test" => CKBNetworkType::Pudge,
+            "dev"|"ckb_dev" => CKBNetworkType::Dev,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl CKBNetworkType {
+    pub fn into_legacy_str(&self) -> String {
+        match self {
+            CKBNetworkType::Mirana => "ckb".to_string(),
+            CKBNetworkType::Pudge => "ckb_testnet".to_string(),
+            CKBNetworkType::Dev => "ckb_dev".to_string(),
+        }
+    }
+}
+
 /// NetworkCrawler crawl the network reachability info.
 ///
 /// This service opens 2 protocols, Identify and Discovery:
@@ -53,7 +81,7 @@ const ADDRESS_TIMEOUT: Duration = Duration::from_secs(30);
 /// * When opening Discovery protocol on a session, send `GetNodes` message.
 /// * When receiving inv `Nodes`, record into `self.reachable`
 pub struct NetworkCrawler {
-    node: Node,
+    network_type: CKBNetworkType,
     query_sender: crossbeam::channel::Sender<String>,
     shared: Arc<RwLock<SharedState>>,
 
@@ -80,7 +108,7 @@ pub struct PeerInfo {
 impl Clone for NetworkCrawler {
     fn clone(&self) -> Self {
         Self {
-            node: self.node.clone(),
+            network_type: self.network_type.clone(),
             query_sender: self.query_sender.clone(),
             shared: Arc::clone(&self.shared),
             observed_addresses: Arc::clone(&self.observed_addresses),
@@ -93,14 +121,14 @@ impl Clone for NetworkCrawler {
 impl NetworkCrawler {
     /// Create a NetworkCrawler
     pub fn new(
-        node: Node,
+        network_type: CKBNetworkType,
         query_sender: crossbeam::channel::Sender<String>,
         shared: Arc<RwLock<SharedState>>,
     ) -> Self {
         #[allow(clippy::mutable_key_type)]
-        let bootnodes = bootnodes(&node);
+        let bootnodes = bootnodes(network_type);
         Self {
-            node,
+            network_type,
             query_sender,
             shared,
             observed_addresses: Arc::new(RwLock::new(bootnodes.clone())),
@@ -387,7 +415,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                                         .count()
                                 };
                                 let entry = crate::entry::Peer {
-                                    network: self.node.consensus().id.clone(),
+                                    network: self.network_type.into_legacy_str(),
                                     time: now,
                                     version: peer_info.client_version.clone(),
                                     ip: ip.clone(),
@@ -444,7 +472,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                 }
             }
             PRUNE_OFFLINE_ADDRESSES_TOKEN => {
-                // TODO prune offline addresses
+                // TODO: prune offline addresses
             }
             _ => unreachable!(),
         }
