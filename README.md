@@ -42,7 +42,12 @@ ckb-analyzer --config config.toml
 
 ### Run Marci
 
-Marci is the frontend service of CKBAnalyzer. You
+Marci is the frontend service of CKBAnalyzer. You can find it in the submodule [frontend/Marci](./frontend/Marci)
+```shell
+cd frontend/Marci
+
+cargo run -- --db-url "postgres://postgres:postgres@127.0.0.1:5432/ckb" --bind "0.0.0.0:1800"
+```
 
 ---
 
