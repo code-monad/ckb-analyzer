@@ -5,12 +5,18 @@ version: '3'
 services:
   postgresql:
     container_name: ckb-analyzer-postgresql
-    image: timescale/timescaledb:latest-pg12
-    env_file: .env
+    build: ./sql
+    user: postgres
+    environment:
+      - POSTGRES_DB=ckb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     ports:
       - "5432:5432"
     volumes:
-      - "./postgresql/var/lib/postgresql/data:/var/lib/postgresql/data"
+      - "./data/postgresql/var/lib/postgresql/data:/var/lib/postgresql/data"
+      - "./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql"
+      - "./sql/init_db.sh:/docker-entrypoint-initdb.d/002_init_db_setup.sh"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432" ]
       interval: 10s
@@ -18,11 +24,12 @@ services:
       retries: 5
     restart: always
 
-  ckb-analyze:
+  ckb-analyzer:
     container_name: ckb-analyzer-networks
     depends_on: # Needs to start after db
-      - postgresql
-    build: ..
+      postgresql:
+        condition: service_healthy
+    build: .
     volumes:
       - "./ckb-analyzer.toml:/etc/ckb-analyzer/config.toml"
     command: 
@@ -36,8 +43,10 @@ services:
   marci:
     container_name: ckb-analyzer-marci
     depends_on:
-      - ckb-analyze
-    build: ../frontend/Marci
+      - ckb-analyzer
+    build: ./frontend/Marci
+    ports:
+      - "1800:1800"
     command:
       - "/app/marci/marci"
       - "--db-url"

@@ -2,29 +2,27 @@
 
 The purpose of CKBAnalyzer is to facilitate observation of the CKB network.
 
-CKBAnalyzer acts as a metrics agent and stores the data into [Timescaledb](https://docs.timescale.com/), then visualize using [Grafana](https://grafana.com/).
+CKBAnalyzer acts as a metrics agent and stores the data into [Timescaledb](https://docs.timescale.com/), then visualize using [Marci](https://github.com/code-monad/Marci.git).
 
-Visit the online dashboards at [https://ckbmonitor.bit.host/], and you can use the [maintained dashboards](https://github.com/keroro520/ckb-analyzer/tree/main/dashboards).
+Visit the online dashboards at [https://nodes.ckb.dev/], and you can [deploy an on-premise](#quick-deployment) one to visit locally.
 
 ## Getting Started
 
 ### Quick deployment
 1. Install [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/).
-2. Clone this repo and enter the directory: `git clone https://github.com/code-monad/ckb-analyzer`
-3. Modify the configuration file [docker/ckb-analyzer.toml](docker/ckb-analyzer.toml).(Or you can keep the default contents)
-4. Run `docker-compose -f docker/collector.yaml up -d` to start the discovery services.
-5. Run `docker-compose -f docker/monitor.yaml up -d` to start the grafana service.
+2. Clone this repo and enter the directory: `git clone https://github.com/code-monad/ckb-analyzer && cd ckb-analyzer && git submodule update --init --recursive`
+3. Modify the configuration file [ckb-analyzer.toml](./ckb-analyzer.toml).(Or you can keep the default contents), enter you [ipinfo.io token](https://ipinfo.io/account/token) .
+4. Run `docker-compose up -d` to start the all services.
 
-Now you can visit http://localhost:3000 to see the dashboards.
+Now you can visit http://localhost:1800 to see the dashboards.
 
 **For a detailed deployment guide, follow the bellow parts**
 
-### Setup TimescaleDB and Grafana services via docker-compose
+### Setup TimescaleDB service
 *NOTE: If you use the integrated docker-compose config to deploy db, this step will be automatically set-up, so you can skip it* 
 ```shell
-$ cp docker/.env.example docker/.env
-
-$ source docker/.env && psql "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:${POSTGRES_PORT:-"5432"}" -f sql/schema.sql
+# Assume you have a local db
+$ psql "postgres://postgres:postgres@127.0.0.1" -f sql/schema.sql
 ```
 
 ### Install CKBAnalyzer
@@ -35,13 +33,16 @@ cargo install --path . -f
 
 ### Run CKBAnalyzer
 
-Mostly configurations are declared inside [`confit.example.toml`](./config.example.toml). You can specify a config file with `--config`.
-
+Mostly configurations are declared inside [`ckb-analyzer.toml`](./ckb-analyzer.toml). You can specify a config file with `--config`.
+Modify the config file, fill you IPINFO_IO_TOKEN, and run the analyzer.
 ```shell
 # NOTE: remember to modify your custom configuration after copy
-cp config.example.toml config.toml
 ckb-analyzer --config config.toml 
 ```
+
+### Run Marci
+
+Marci is the frontend service of CKBAnalyzer. You
 
 ---
 
