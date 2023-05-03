@@ -22,7 +22,7 @@ services:
     container_name: ckb-analyzer-networks
     depends_on: # Needs to start after db
       - postgresql
-    build: .
+    build: ..
     volumes:
       - "./ckb-analyzer.toml:/etc/ckb-analyzer/config.toml"
     command: 
@@ -39,7 +39,7 @@ services:
       - ckb-analyze
     build: ../frontend/Marci
     command:
-      - "/bin/marci"
+      - "/app/marci/marci"
       - "--db-url"
       - "postgresql://postgres:postgres@postgresql/ckb"
       - "--bind"
