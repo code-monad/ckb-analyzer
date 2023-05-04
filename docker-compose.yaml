@@ -6,7 +6,6 @@ services:
   postgresql:
     container_name: ckb-analyzer-postgresql
     build: ./sql
-    user: postgres
     environment:
       - POSTGRES_DB=ckb
       - POSTGRES_USER=postgres
@@ -28,6 +27,8 @@ services:
       postgresql:
         condition: service_healthy
     build: .
+    environment:
+      - IPINFO_IO_TOKEN= # Your ipinfo.io token here
     volumes:
       - "./ckb-analyzer.toml:/etc/ckb-analyzer/config.toml"
     command: 
