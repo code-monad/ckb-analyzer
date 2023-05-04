@@ -191,10 +191,14 @@ impl NetworkCrawler {
                             identify_payload.client_version().unpack();
                         let client_version =
                             String::from_utf8_lossy(&client_version_vec).to_string();
-                        ckb_testkit::debug!(
-                            "NetworkCrawler received IdentifyMessage, address: {}, time: {:?}",
+                        let client_name_vec: Vec<u8> = identify_payload.name().unpack();
+                        let client_name =
+                            String::from_utf8_lossy(&client_name_vec).to_string();
+                        log::info!(
+                            "NetworkCrawler received IdentifyMessage, address: {}, time: {:?}, client_name: {:?}",
                             context.session.address,
-                            Instant::now()
+                            Instant::now(),
+                            client_name
                         );
                         if let Ok(mut online) = self.online.write() {
                             let entry = online
@@ -210,12 +214,12 @@ impl NetworkCrawler {
                         }
                     }
                     Err(err) => {
-                        ckb_testkit::error!("NetworkCrawler received invalid Identify Payload, address: {}, error: {:?}", context.session.address, err);
+                        log::error!("NetworkCrawler received invalid Identify Payload, address: {}, error: {:?}", context.session.address, err);
                     }
                 }
             }
             Err(err) => {
-                ckb_testkit::error!(
+                log::error!(
                     "NetworkCrawler received invalid IdentifyMessage, address: {}, error: {:?}",
                     context.session.address,
                     err
@@ -242,7 +246,7 @@ impl NetworkCrawler {
                                         Multiaddr::try_from(address.raw_data().to_vec())
                                     {
                                         if observed_addresses.insert(addr.clone()) {
-                                            ckb_testkit::debug!(
+                                            log::debug!(
                                                 "NetworkCrawler observed new address: {}",
                                                 addr
                                             );
@@ -286,7 +290,7 @@ impl NetworkCrawler {
                 match codec.decode(&mut data) {
                     Ok(Some(frame)) => self.received_discovery(context, frame.freeze()),
                     _ => {
-                        ckb_testkit::error!(
+                        log::error!(
                             "NetworkCrawler received invalid DiscoveryMessage, address: {}, error: {:?}",
                             context.session.address,
                             err
@@ -479,7 +483,7 @@ impl P2PServiceProtocol for NetworkCrawler {
     }
 
     fn connected(&mut self, context: P2PProtocolContextMutRef, protocol_version: &str) {
-        ckb_testkit::debug!(
+        log::debug!(
             "NetworkCrawler open protocol, protocol_name: {} address: {}",
             context
                 .protocols()
@@ -498,7 +502,7 @@ impl P2PServiceProtocol for NetworkCrawler {
     }
 
     fn disconnected(&mut self, context: P2PProtocolContextMutRef) {
-        ckb_testkit::debug!(
+        log::debug!(
             "NetworkCrawler close protocol, protocol_name: {}, address: {:?}",
             context
                 .protocols()
@@ -528,7 +532,7 @@ impl P2PServiceHandle for NetworkCrawler {
                 // discard
             }
             _ => {
-                ckb_testkit::error!("NetworkCrawler detect service error, error: {:?}", error);
+                log::error!("NetworkCrawler detect service error, error: {:?}", error);
             }
         }
     }
@@ -539,7 +543,7 @@ impl P2PServiceHandle for NetworkCrawler {
             P2PServiceEvent::SessionOpen {
                 session_context: session,
             } => {
-                ckb_testkit::debug!("NetworkCrawler open session: {:?}", session);
+                log::debug!("NetworkCrawler open session: {:?}", session);
                 // Reject passive connection
                 if session.ty.is_inbound() {
                     let _ = context.disconnect(session.id);
@@ -554,7 +558,7 @@ impl P2PServiceHandle for NetworkCrawler {
             P2PServiceEvent::SessionClose {
                 session_context: session,
             } => {
-                ckb_testkit::debug!("NetworkCrawler close session: {:?}", session);
+                log::debug!("NetworkCrawler close session: {:?}", session);
                 let _removed = self
                     .shared
                     .write()

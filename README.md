@@ -11,7 +11,7 @@ Visit the online dashboards at [https://nodes.ckb.dev/], and you can [deploy an 
 ### Quick deployment
 1. Install [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/).
 2. Clone this repo and enter the directory: `git clone https://github.com/code-monad/ckb-analyzer && cd ckb-analyzer && git submodule update --init --recursive`
-3. Modify the configuration file [ckb-analyzer.toml](./ckb-analyzer.toml).(Or you can keep the default contents), enter you [ipinfo.io token](https://ipinfo.io/account/token) .
+3. Modify the deployment file [docker-compose.yaml](./docker-compose.yaml).(Or you can keep the default contents), enter you [ipinfo.io token](https://ipinfo.io/account/token) .
 4. Run `docker-compose up -d` to start the all services.
 
 Now you can visit http://localhost:1800 to see the dashboards.

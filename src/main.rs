@@ -42,9 +42,6 @@ async fn main() {
             let password = config.db.password;
 
             // change setting
-            if !config.ipinfo_io_token.is_empty() {
-                std::env::set_var("IPINFO_IO_TOKEN", config.ipinfo_io_token)
-            }
             let mut config = tokio_postgres::Config::new();
             config
                 .host(&host)
