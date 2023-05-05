@@ -45,6 +45,8 @@ services:
     depends_on:
       - ckb-analyzer
     build: ./frontend/Marci
+    environment:
+      - MARCI_DEFAULT_TIMEOUT=43200
     ports:
       - "1800:1800"
     command:

@@ -1,6 +1,8 @@
 /target
 /.idea
 /data
+/data/postgresql
+./data/postgresql
 /network
 *.swp
 *.env
