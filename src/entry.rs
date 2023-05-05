@@ -12,6 +12,7 @@ pub struct Peer {
     pub version: String,
     pub ip: String,
     pub n_reachable: i32,
+    pub address: String,
 }
 
 /// IP info

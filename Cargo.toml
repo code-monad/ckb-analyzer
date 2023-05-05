@@ -16,7 +16,7 @@ chrono = { version = "0.4.19" }
 log = { version = "0.4.11" }
 simple_logger = { version = "4.1.0", default-features = false }
 tokio-postgres = { version = "0.7.0", features = ["with-chrono-0_4", "runtime"] }
-ipinfo = { version = "0.5.1" }
+ipinfo = { version = "1.0.0" }
 ckb-util = "0.108.1"
 ckb-testkit = { git = "https://github.com/nervosnetwork/ckb-integration-test", rev = "7c4aaa6f72df4bcf4077495c6371c61dcb767890", features = ["with_subscribe"] }
 clap = { version = "2" }

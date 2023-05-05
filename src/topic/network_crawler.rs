@@ -27,6 +27,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
+use tokio::runtime::Handle;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
 
 // TODO Adjust the parameters
@@ -192,13 +193,10 @@ impl NetworkCrawler {
                         let client_version =
                             String::from_utf8_lossy(&client_version_vec).to_string();
                         let client_name_vec: Vec<u8> = identify_payload.name().unpack();
-                        let client_name =
-                            String::from_utf8_lossy(&client_name_vec).to_string();
                         log::info!(
-                            "NetworkCrawler received IdentifyMessage, address: {}, time: {:?}, client_name: {:?}",
+                            "NetworkCrawler received IdentifyMessage, address: {}, time: {:?}",
                             context.session.address,
-                            Instant::now(),
-                            client_name
+                            Instant::now()
                         );
                         if let Ok(mut online) = self.online.write() {
                             let entry = online
@@ -424,6 +422,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                                     version: peer_info.client_version.clone(),
                                     ip: ip.clone(),
                                     n_reachable: n_reachable as i32,
+                                    address: peer_info.address.to_string().clone(),
                                 };
                                 entries.push(entry);
                             }
@@ -433,9 +432,10 @@ impl P2PServiceProtocol for NetworkCrawler {
 
                 for entry in entries.iter() {
                     let raw_query = format!(
-                        "INSERT INTO {}.peer(time, version, ip, n_reachable) \
-                             VALUES ('{}', '{}', '{}', {})",
-                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable,
+                        "INSERT INTO {}.peer(time, version, ip, n_reachable, address) \
+                        VALUES ('{}', '{}', '{}', {}, '{}') \
+                        ON CONFLICT (address) DO UPDATE SET time = excluded.time, n_reachable = excluded.n_reachable",
+                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address,
                     );
                     self.query_sender.send(raw_query).unwrap();
                 }
@@ -471,6 +471,8 @@ impl P2PServiceProtocol for NetworkCrawler {
                             );
                             self.known_ips.insert(entry.ip);
                             self.query_sender.send(raw_query).unwrap();
+                        } else {
+                            log::warn!("Failed to lookup ipinfo for {}", entry.ip);
                         }
                     }
                 }

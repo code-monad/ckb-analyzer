@@ -2,6 +2,8 @@ use ipinfo::{IpDetails, IpError, IpInfo};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use futures::task::SpawnExt;
+use tokio::runtime::Handle;
 
 lazy_static! {
     static ref IPINFO: Mutex<IpInfo> = {
@@ -32,15 +34,19 @@ pub fn lookup_ipinfo(ip: &str) -> Result<IpDetails, IpError> {
     }
 
     if let Ok(mut ipinfo) = IPINFO.lock() {
-        match ipinfo.lookup(&[ip]) {
+        let lookup_info = ipinfo.lookup(&ip);
+        match lookup_info {
             Ok(ipdetails) => {
                 if let Ok(mut cache) = IPINFO_CACHE.lock() {
-                    cache.insert(ip.to_string(), ipdetails[ip].to_owned());
+                    cache.insert(ip.to_string(), ipdetails.to_owned());
                 }
 
-                return Ok(ipdetails[ip].to_owned());
+                return Ok(ipdetails.to_owned());
             }
-            Err(err) => return Err(err),
+            Err(err) => {
+                log::warn!("IPINFO.lookup(\"{}\"), error: {}", ip, err);
+                return Err(err)
+            },
         }
     }
 
