@@ -6,6 +6,7 @@ services:
   postgresql:
     container_name: ckb-analyzer-postgresql
     build: ./sql
+    user: postgres
     environment:
       - POSTGRES_DB=ckb
       - POSTGRES_USER=postgres

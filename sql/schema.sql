@@ -7,17 +7,20 @@ CREATE SCHEMA IF NOT EXISTS ckb_dev;
 CREATE TABLE IF NOT EXISTS ckb.peer (
     id                  SERIAL,
     time                TIMESTAMP       NOT NULL,
-    version             VARCHAR ( 200 ) NOT NULL,
-    ip                  VARCHAR ( 46 )  NOT NULL,
-    n_reachable         INT             NOT NULL DEFAULT 0
+    version             TEXT            NOT NULL,
+    ip                  TEXT            NOT NULL,
+    n_reachable         INT             NOT NULL DEFAULT 0,
+    address             TEXT            NULL
 );
+ALTER TABLE ckb.peer ADD CONSTRAINT unique_address UNIQUE (address);
+
 CREATE TABLE IF NOT EXISTS ckb.ipinfo (
-    ip                  VARCHAR ( 46 )  PRIMARY KEY NOT NULL,
-    country             VARCHAR ( 20 )  NULL,
-    city                VARCHAR ( 100 )  NULL,
-    loc                 VARCHAR ( 100 )  NULL,
-    region              VARCHAR ( 100 )  NULL,
-    company             VARCHAR ( 100 )  NULL
+    ip                  TEXT             PRIMARY KEY NOT NULL,
+    country             TEXT             NULL,
+    city                TEXT             NULL,
+    loc                 TEXT             NULL,
+    region              TEXT             NULL,
+    company             TEXT             NULL
 );
 CREATE TABLE IF NOT EXISTS ckb.block (
     time                        TIMESTAMP       NOT NULL,
@@ -138,17 +141,20 @@ CREATE TABLE IF NOT EXISTS ckb.peer_last_compact_block (
 CREATE TABLE IF NOT EXISTS ckb_testnet.peer (
     id                  SERIAL,
     time                TIMESTAMP       NOT NULL,
-    version             VARCHAR ( 200 ) NOT NULL,
-    ip                  VARCHAR ( 46 )  NOT NULL,
-    n_reachable         INT             NOT NULL DEFAULT 0
+    version             TEXT            NOT NULL,
+    ip                  TEXT            NOT NULL,
+    n_reachable         INT             NOT NULL DEFAULT 0,
+    address             TEXT            NULL
 );
+ALTER TABLE ckb_testnet.peer ADD CONSTRAINT unique_address UNIQUE (address);
+
 CREATE TABLE IF NOT EXISTS ckb_testnet.ipinfo (
-    ip                  VARCHAR ( 46 )  PRIMARY KEY NOT NULL,
-    country             VARCHAR ( 20 )  NULL,
-    city                VARCHAR ( 100 )  NULL,
-    loc                 VARCHAR ( 100 )  NULL,
-    region              VARCHAR ( 100 )  NULL,
-    company             VARCHAR ( 100 )  NULL
+    ip                  TEXT            PRIMARY KEY NOT NULL,
+    country             TEXT            NULL,
+    city                TEXT            NULL,
+    loc                 TEXT            NULL,
+    region              TEXT            NULL,
+    company             TEXT            NULL
 );
 CREATE TABLE IF NOT EXISTS ckb_testnet.block (
     time                        TIMESTAMP       NOT NULL,
@@ -267,27 +273,30 @@ CREATE TABLE IF NOT EXISTS ckb_testnet.peer_last_compact_block (
 );
 
 CREATE TABLE IF NOT EXISTS ckb_dev.peer (
-                                        id                  SERIAL,
-                                        time                TIMESTAMP       NOT NULL,
-                                        version             VARCHAR ( 200 ) NOT NULL,
-    ip                  VARCHAR ( 46 )  NOT NULL,
-    n_reachable         INT             NOT NULL DEFAULT 0
+    id                  SERIAL,
+    time                TIMESTAMP       NOT NULL,
+    version             TEXT            NOT NULL,
+    ip                  TEXT            NOT NULL,
+    n_reachable         INT             NOT NULL DEFAULT 0,
+    address             TEXT            NULL
     );
+ALTER TABLE ckb_dev.peer ADD CONSTRAINT unique_address UNIQUE (address);
+
 CREATE TABLE IF NOT EXISTS ckb_dev.ipinfo (
-    ip                  VARCHAR ( 46 )  PRIMARY KEY NOT NULL,
-    country             VARCHAR ( 20 )  NULL,
-    city                VARCHAR ( 100 )  NULL,
-    loc                 VARCHAR ( 100 )  NULL,
-    region              VARCHAR ( 100 )  NULL,
-    company             VARCHAR ( 100 )  NULL
+    ip                  TEXT            PRIMARY KEY NOT NULL,
+    country             TEXT            NULL,
+    city                TEXT            NULL,
+    loc                 TEXT            NULL,
+    region              TEXT            NULL,
+    company             TEXT            NULL
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.block (
-                                         time                        TIMESTAMP       NOT NULL,
-                                         number                      BIGINT          NOT NULL,
-                                         n_transactions              INT             NOT NULL,
-                                         n_proposals                 INT             NOT NULL,
-                                         n_uncles                    INT             NOT NULL,
-                                         miner_lock_args             VARCHAR ( 100 ) NULL,
+    time                        TIMESTAMP       NOT NULL,
+    number                      BIGINT          NOT NULL,
+    n_transactions              INT             NOT NULL,
+    n_proposals                 INT             NOT NULL,
+    n_uncles                    INT             NOT NULL,
+    miner_lock_args             VARCHAR ( 100 ) NULL,
     cellbase_client_version     VARCHAR ( 50 )  NULL,
     cellbase_miner_source       VARCHAR ( 50 )  NULL,
     interval                    BIGINT          NOT NULL,
@@ -295,53 +304,53 @@ CREATE TABLE IF NOT EXISTS ckb_dev.block (
     PRIMARY KEY (number)
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.tx_pool_info (
-                                                time                TIMESTAMP       NOT NULL,
-                                                total_tx_cycles     BIGINT          NOT NULL,
-                                                total_tx_size       BIGINT          NOT NULL,
-                                                pending             BIGINT          NOT NULL,
-                                                proposed            BIGINT          NOT NULL,
-                                                orphan              BIGINT          NOT NULL
+    time                TIMESTAMP       NOT NULL,
+    total_tx_cycles     BIGINT          NOT NULL,
+    total_tx_size       BIGINT          NOT NULL,
+    pending             BIGINT          NOT NULL,
+    proposed            BIGINT          NOT NULL,
+    orphan              BIGINT          NOT NULL
 );
 CREATE TABLE IF NOT EXISTS ckb_dev.block_transaction (
-                                                     time                TIMESTAMP       NOT NULL,
-                                                     number              BIGINT          NOT NULL,
-                                                     size                BIGINT          NOT NULL,
-                                                     n_inputs            INT             NOT NULL,
-                                                     n_outputs           INT             NOT NULL,
-                                                     n_header_deps       INT             NOT NULL,
-                                                     n_cell_deps         INT             NOT NULL,
-                                                     total_data_size     BIGINT          NOT NULL,
-                                                     proposal_id         VARCHAR ( 66 )  NOT NULL,
+    time                TIMESTAMP       NOT NULL,
+    number              BIGINT          NOT NULL,
+    size                BIGINT          NOT NULL,
+    n_inputs            INT             NOT NULL,
+    n_outputs           INT             NOT NULL,
+    n_header_deps       INT             NOT NULL,
+    n_cell_deps         INT             NOT NULL,
+    total_data_size     BIGINT          NOT NULL,
+    proposal_id         VARCHAR ( 66 )  NOT NULL,
     hash                VARCHAR ( 66 )  NOT NULL,
     PRIMARY KEY (number)
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.subscribed_new_transaction (
-                                                              time                TIMESTAMP       NOT NULL,
-                                                              size                BIGINT          NOT NULL,
-                                                              cycles              BIGINT          NOT NULL,
-                                                              fee                 BIGINT          NOT NULL,
-                                                              n_inputs            INT             NOT NULL,
-                                                              n_outputs           INT             NOT NULL,
-                                                              n_header_deps       INT             NOT NULL,
-                                                              n_cell_deps         INT             NOT NULL,
-                                                              proposal_id         VARCHAR ( 66 )  NOT NULL,
+    time                TIMESTAMP       NOT NULL,
+    size                BIGINT          NOT NULL,
+    cycles              BIGINT          NOT NULL,
+    fee                 BIGINT          NOT NULL,
+    n_inputs            INT             NOT NULL,
+    n_outputs           INT             NOT NULL,
+    n_header_deps       INT             NOT NULL,
+    n_cell_deps         INT             NOT NULL,
+    proposal_id         VARCHAR ( 66 )  NOT NULL,
     hash                VARCHAR ( 66 )  NOT NULL
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.subscribed_proposed_transaction (
-                                                                   time                TIMESTAMP       NOT NULL,
-                                                                   size                BIGINT          NOT NULL,
-                                                                   cycles              BIGINT          NOT NULL,
-                                                                   fee                 BIGINT          NOT NULL,
-                                                                   n_inputs            INT             NOT NULL,
-                                                                   n_outputs           INT             NOT NULL,
-                                                                   n_header_deps       INT             NOT NULL,
-                                                                   n_cell_deps         INT             NOT NULL,
-                                                                   proposal_id         VARCHAR ( 66 )  NOT NULL,
+    time                TIMESTAMP       NOT NULL,
+    size                BIGINT          NOT NULL,
+    cycles              BIGINT          NOT NULL,
+    fee                 BIGINT          NOT NULL,
+    n_inputs            INT             NOT NULL,
+    n_outputs           INT             NOT NULL,
+    n_header_deps       INT             NOT NULL,
+    n_cell_deps         INT             NOT NULL,
+    proposal_id         VARCHAR ( 66 )  NOT NULL,
     hash                VARCHAR ( 66 )  NOT NULL
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.subscribed_rejected_transaction (
-                                                                   time                TIMESTAMP       NOT NULL,
-                                                                   reason              VARCHAR ( 60 )  NOT NULL,
+    time                TIMESTAMP       NOT NULL,
+    reason              VARCHAR ( 60 )  NOT NULL,
     size                BIGINT          NOT NULL,
     cycles              BIGINT          NOT NULL,
     fee                 BIGINT          NOT NULL,
@@ -353,23 +362,23 @@ CREATE TABLE IF NOT EXISTS ckb_dev.subscribed_rejected_transaction (
     hash                VARCHAR ( 66 )  NOT NULL
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.epoch (
-                                         start_time          TIMESTAMP       NOT NULL,
-                                         end_time            TIMESTAMP       NOT NULL,
-                                         number              BIGINT          NOT NULL,
-                                         length              BIGINT          NOT NULL,
-                                         start_number        BIGINT          NOT NULL,
-                                         n_uncles            INT             NOT NULL,
-                                         difficulty          NUMERIC         NOT NULL
+    start_time          TIMESTAMP       NOT NULL,
+    end_time            TIMESTAMP       NOT NULL,
+    number              BIGINT          NOT NULL,
+    length              BIGINT          NOT NULL,
+    start_number        BIGINT          NOT NULL,
+    n_uncles            INT             NOT NULL,
+    difficulty          NUMERIC         NOT NULL
 );
 CREATE TABLE IF NOT EXISTS ckb_dev.retention_transaction (
-                                                         time                TIMESTAMP       NOT NULL,
-                                                         hash                VARCHAR ( 66 )  NOT NULL
+    time                TIMESTAMP       NOT NULL,
+    hash                VARCHAR ( 66 )  NOT NULL
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.created_cell (
-                                                time                   TIMESTAMP       NOT NULL,
-                                                block_number           BIGINT          NOT NULL,
-                                                tx_index               INT             NOT NULL,
-                                                tx_hash                VARCHAR ( 66 )  NOT NULL,
+    time                   TIMESTAMP       NOT NULL,
+    block_number           BIGINT          NOT NULL,
+    tx_index               INT             NOT NULL,
+    tx_hash                VARCHAR ( 66 )  NOT NULL,
     index                  INT             NOT NULL,
     lock_hash_type         INT             NOT NULL,
     lock_code_hash         VARCHAR ( 66 )  NOT NULL,
@@ -379,16 +388,16 @@ CREATE TABLE IF NOT EXISTS ckb_dev.created_cell (
     PRIMARY KEY (tx_hash, index)
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.spent_cell (
-                                              time                   TIMESTAMP       NOT NULL,
-                                              block_number           BIGINT          NOT NULL,
-                                              tx_hash                VARCHAR ( 66 )  NOT NULL,
+    time                   TIMESTAMP       NOT NULL,
+    block_number           BIGINT          NOT NULL,
+    tx_hash                VARCHAR ( 66 )  NOT NULL,
     index                  BIGINT          NOT NULL,
     PRIMARY KEY (tx_hash, index)
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.compact_block_first_seen (
-                                                            time                        TIMESTAMP       NOT NULL,
-                                                            block_number                BIGINT          NOT NULL,
-                                                            ip                          VARCHAR ( 46 )  NOT NULL
+    time                        TIMESTAMP       NOT NULL,
+    block_number                BIGINT          NOT NULL,
+    ip                          VARCHAR ( 46 )  NOT NULL
     );
 CREATE TABLE IF NOT EXISTS ckb_dev.peer_last_compact_block (
     ip                          VARCHAR ( 46 )  PRIMARY KEY NOT NULL,
