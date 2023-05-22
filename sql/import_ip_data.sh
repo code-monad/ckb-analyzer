@@ -7,13 +7,14 @@ download_file() {
 
   if [ -n "$DOWNLOAD_PROXY" ]; then
     echo "Using proxy: $DOWNLOAD_PROXY"
-    wget --proxy="$DOWNLOAD_PROXY" -O "$file_name" "$url"
+    HTTPS_PROXY=$DOWNLOAD_PROXY wget --proxy="$DOWNLOAD_PROXY" -O "$file_name" "$url"
   else
     wget -O "$file_name" "$url"
   fi
 
   if [ $? -ne 0 ]; then
     echo "Error downloading $file_name. Exiting..."
+    rm "$file_name"
     exit 1
   fi
 }
@@ -34,7 +35,7 @@ insert_csv_to_db() {
   table_name=$2
   schema_name=$3
 
-  psql  -U "$PGUSER" -d "$PGDATABASE" -c "COPY $schema_name.$table_name FROM '$csv_file' DELIMITER ',' CSV;"
+  psql -U "$PGUSER" -d "$PGDATABASE" -c "COPY $schema_name.$table_name FROM '$csv_file' DELIMITER ',' CSV;"
 }
 
 # Insert IPv4 data
