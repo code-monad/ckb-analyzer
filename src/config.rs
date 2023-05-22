@@ -10,19 +10,22 @@ use crate::{
 pub struct CKBAnalyzerConfig {
     pub networks: Vec<CKBNetworkType>,
     pub db: DBConfig,
+    pub witness_bound: i32,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 struct RawCKBAnalyzerConfig {
     networks: Vec<String>,
     db: DBConfig,
+    witness_bound: i32,
 }
 
 impl CKBAnalyzerConfig {
-    pub fn new(networks : Vec<CKBNetworkType>, db : DBConfig, ipinfo_io_token: String) -> Self {
+    pub fn new(networks : Vec<CKBNetworkType>, db : DBConfig, ipinfo_io_token: String, witness_bound: i32) -> Self {
         Self {
             networks,
             db,
+            witness_bound,
         }
     }
 
@@ -38,6 +41,7 @@ impl From<RawCKBAnalyzerConfig> for CKBAnalyzerConfig {
         Self {
             networks,
             db: raw.db,
+            witness_bound: raw.witness_bound,
         }
     }
 }
