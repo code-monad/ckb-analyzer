@@ -33,8 +33,13 @@ async fn main() {
     };
     log::info!("Config: {:?}", config);
 
+
+
+    let mut witness_bound = 3;
+
     let pg_config = match config {
         Some(config) => {
+            witness_bound = config.witness_bound;
             let host = config.db.host;
             let port = config.db.port;
             let database = config.db.database;
@@ -94,6 +99,7 @@ async fn main() {
         }
     };
 
+
     let pg = {
         log::info!("Connecting to Postgres, {:?}", pg_config);
         let (pg, conn) = pg_config.connect(tokio_postgres::NoTls).await.expect("Failed to connect to Postgres");
@@ -104,6 +110,7 @@ async fn main() {
         });
         pg
     };
+
 
     // start handlers
     let (query_sender, mut query_receiver) =
@@ -118,7 +125,7 @@ async fn main() {
                     log::info!("Start listening {:?}", network);
                     let shared = Arc::new(RwLock::new(SharedState::new()));
                     let network_crawler =
-                        NetworkCrawler::new(network.clone(), query_sender.clone(), Arc::clone(&shared));
+                        NetworkCrawler::new(network.clone(), query_sender.clone(), Arc::clone(&shared), witness_bound);
                     // workaround for Rust lifetime
                     _connectors.push(
                         ConnectorBuilder::new()

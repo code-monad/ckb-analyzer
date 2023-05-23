@@ -25,8 +25,11 @@ use p2p::{
 use rand::{thread_rng, Rng};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
+use std::error::Error;
+use std::ops::Mul;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
+use p2p::error::{DialerErrorKind, SendErrorKind};
 use tokio::runtime::Handle;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
 
@@ -87,13 +90,19 @@ pub struct NetworkCrawler {
     shared: Arc<RwLock<SharedState>>,
 
     // all observed addresses
-    observed_addresses: Arc<RwLock<HashSet<Multiaddr>>>,
+    observed_addresses: Arc<RwLock<HashMap<Multiaddr, usize>>>,
 
     // #{ ip => peer_info }
     online: Arc<RwLock<HashMap<Ip, PeerInfo>>>,
 
-    // already known iP
+    // Already known iP
     known_ips: HashSet<String>,
+
+    // For identify version outside peer protocol context
+    observed_version: Arc<RwLock<HashMap<Multiaddr, String>>>,
+
+    // If observed count over this, even peer unable to dial will treat as observed
+    witness_bound: usize,
 }
 
 type Ip = String;
@@ -115,6 +124,8 @@ impl Clone for NetworkCrawler {
             observed_addresses: Arc::clone(&self.observed_addresses),
             online: Arc::clone(&self.online),
             known_ips: self.known_ips.clone(),
+            observed_version: self.observed_version.clone(),
+            witness_bound: self.witness_bound.clone(),
         }
     }
 }
@@ -125,14 +136,19 @@ impl NetworkCrawler {
         network_type: CKBNetworkType,
         query_sender: crossbeam::channel::Sender<String>,
         shared: Arc<RwLock<SharedState>>,
+        witness_bound: usize,
     ) -> Self {
         #[allow(clippy::mutable_key_type)]
         let bootnodes = bootnodes(network_type);
+        let observed_addresses = bootnodes
+            .iter()
+            .map(|address| (address.clone(), 1))
+            .collect::<HashMap<_, _>>();
         Self {
             network_type,
             query_sender,
             shared,
-            observed_addresses: Arc::new(RwLock::new(bootnodes.clone())),
+            observed_addresses: Arc::new(RwLock::new(observed_addresses.clone())),
             online: Arc::new(RwLock::new(
                 bootnodes
                     .into_iter()
@@ -150,6 +166,8 @@ impl NetworkCrawler {
                     .collect(),
             )),
             known_ips: Default::default(),
+            observed_version: Default::default(),
+            witness_bound
         }
     }
 
@@ -198,7 +216,13 @@ impl NetworkCrawler {
                             context.session.address,
                             Instant::now()
                         );
-                        if let Ok(mut online) = self.online.write() {
+                        if let Ok(mut observed_addresses) = self.observed_addresses.write() {
+                            *observed_addresses.entry(context.session.address.clone()).or_insert(1) = 1;
+                        }
+                        if let Ok(mut version_map) = self.observed_version.write() {
+                            *version_map.entry(context.session.address.clone()).or_insert(client_version.clone()) = client_version.clone();
+                        }
+                        if let (Ok(mut online), client_version) = (self.online.write(), client_version) {
                             let entry = online
                                 .entry(addr_to_ip(&context.session.address))
                                 .or_insert_with(|| PeerInfo {
@@ -231,7 +255,7 @@ impl NetworkCrawler {
             Ok(message) => {
                 match message.payload().to_enum() {
                     packed::DiscoveryPayloadUnion::Nodes(discovery_nodes) => {
-                        ckb_testkit::debug!(
+                        log::debug!(
                             "NetworkCrawler received DiscoveryMessages Nodes, address: {}, nodes.len: {}",
                             context.session.address,
                             discovery_nodes.items().len(),
@@ -243,12 +267,13 @@ impl NetworkCrawler {
                                     if let Ok(addr) =
                                         Multiaddr::try_from(address.raw_data().to_vec())
                                     {
-                                        if observed_addresses.insert(addr.clone()) {
-                                            log::debug!(
+                                        log::debug!(
                                                 "NetworkCrawler observed new address: {}",
                                                 addr
                                             );
-                                        }
+
+                                        // insert default 1 or increment
+                                        *observed_addresses.entry(addr).or_insert(1) += 1;
                                     }
                                 }
                             }
@@ -314,6 +339,37 @@ impl NetworkCrawler {
             context.send_message(message_bytes).unwrap();
         }
     }
+
+    fn online_witnesses(&mut self, addr: &Multiaddr) {
+        if let Ok(mut observed_addresses) = self.observed_addresses.write() {
+            if let Some(witnesses_count) = observed_addresses.get(&addr) {
+                if witnesses_count >= &self.witness_bound {
+                    log::info!("Failed to dial {:?} but still treat as online because of multiple witnesses. witnesses_count: {}", addr, witnesses_count);
+                    if let Ok(mut online) = self.online.write() {
+                        let entry = online
+                            .entry(addr_to_ip(&addr))
+                            .or_insert_with(|| PeerInfo {
+                                address: addr.clone(),
+                                last_seen_time: Default::default(),
+                                reachable: Default::default(),
+                                client_version: Default::default(),
+                            });
+                        entry.last_seen_time = Some(Instant::now());
+                        if let Ok(version_map) = self.observed_version.read() {
+                            if version_map.contains_key(&addr) {
+                                let version= version_map.get(&addr).unwrap();
+                                entry.client_version = version.clone();
+                            }
+                        }
+                        // Reset witness count
+                        observed_addresses.entry(addr.to_owned()).and_modify( |cnt|
+                            *cnt = 0
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl P2PServiceProtocol for NetworkCrawler {
@@ -353,11 +409,12 @@ impl P2PServiceProtocol for NetworkCrawler {
     fn notify(&mut self, context: &mut P2PProtocolContext, token: u64) {
         match token {
             DIAL_ONLINE_ADDRESSES_TOKEN => {
-                // TODO reset notify to adjust the length of observed_addresses
                 // context.remove_service_notify();
                 // context.set_service_notify();
                 let mut rng = thread_rng();
-                if let Ok(observed_addresses) = self.observed_addresses.write() {
+                let mut dial_res = None;
+                let mut addr = None;
+                if let Ok(mut observed_addresses) = self.observed_addresses.write() {
                     let random_index = rng.gen_range(0..observed_addresses.len());
                     let random_address = observed_addresses
                         .iter()
@@ -369,12 +426,16 @@ impl P2PServiceProtocol for NetworkCrawler {
                         .shared
                         .read()
                         .unwrap()
-                        .get_session(random_address)
+                        .get_session(random_address.0)
                         .is_none()
                     {
-                        let _ = context.dial((*random_address).clone(), P2PTargetProtocol::All);
+                        dial_res = Some(context.dial(random_address.0.clone(), P2PTargetProtocol::All));
+                        addr = Some(random_address.0.clone());
                     }
                 };
+                if let Some(Err(_)) = dial_res {
+                    self.online_witnesses(&addr.unwrap());
+                }
             }
             DISCONNECT_TIMEOUT_SESSION_TOKEN => {
                 let sessions = {
@@ -530,7 +591,10 @@ impl P2PServiceProtocol for NetworkCrawler {
 impl P2PServiceHandle for NetworkCrawler {
     fn handle_error(&mut self, _context: &mut P2PServiceContext, error: P2PServiceError) {
         match &error {
-            P2PServiceError::DialerError { .. } | P2PServiceError::ProtocolSelectError { .. } => {
+            P2PServiceError::DialerError { address, error }  => {
+                self.online_witnesses(address);
+            },
+            P2PServiceError::ProtocolSelectError { .. } => {
                 // discard
             }
             _ => {
@@ -560,7 +624,7 @@ impl P2PServiceHandle for NetworkCrawler {
             P2PServiceEvent::SessionClose {
                 session_context: session,
             } => {
-                log::debug!("NetworkCrawler close session: {:?}", session);
+                log::debug!("NetworkCrawler close session: {:?}, addr: {:?}", session, session.address);
                 let _removed = self
                     .shared
                     .write()

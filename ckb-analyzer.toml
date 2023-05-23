@@ -1,5 +1,7 @@
 networks = ["mirana", "pudge"]
 
+witness_bound = 3
+
 # Postgres Connection Config
 [db]
 host = "postgresql"
