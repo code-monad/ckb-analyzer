@@ -90,7 +90,7 @@ pub struct NetworkCrawler {
     shared: Arc<RwLock<SharedState>>,
 
     // all observed addresses
-    observed_addresses: Arc<RwLock<HashMap<Multiaddr, i32>>>,
+    observed_addresses: Arc<RwLock<HashMap<Multiaddr, usize>>>,
 
     // #{ ip => peer_info }
     online: Arc<RwLock<HashMap<Ip, PeerInfo>>>,
@@ -102,7 +102,7 @@ pub struct NetworkCrawler {
     observed_version: Arc<RwLock<HashMap<Multiaddr, String>>>,
 
     // If observed count over this, even peer unable to dial will treat as observed
-    witness_bound: i32,
+    witness_bound: usize,
 }
 
 type Ip = String;
@@ -136,7 +136,7 @@ impl NetworkCrawler {
         network_type: CKBNetworkType,
         query_sender: crossbeam::channel::Sender<String>,
         shared: Arc<RwLock<SharedState>>,
-        witness_bound: i32,
+        witness_bound: usize,
     ) -> Self {
         #[allow(clippy::mutable_key_type)]
         let bootnodes = bootnodes(network_type);
