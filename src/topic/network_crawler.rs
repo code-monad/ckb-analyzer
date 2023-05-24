@@ -27,6 +27,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::error::Error;
 use std::ops::Mul;
+use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use p2p::error::{DialerErrorKind, SendErrorKind};
@@ -509,6 +510,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                             city,
                             region,
                             company,
+                            loc,
                             ..
                         }) = lookup_ipinfo(&entry.ip)
                         {
@@ -532,6 +534,15 @@ impl P2PServiceProtocol for NetworkCrawler {
                             );
                             self.known_ips.insert(entry.ip);
                             self.query_sender.send(raw_query).unwrap();
+
+                            let mut lat_lon = loc.split(',');
+                            // Parse each part to f64, providing a default if the value can't be parsed
+                            let latitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
+                            let longitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
+
+                            let query = format!("INSERT INTO common_info.lat_info (city, country, state1, latitude, longitude)
+                            VALUES ({}, {}, {}, {}, {}) ON CONFLICT (city, country) DO NOTHING", entry.city, entry.country, entry.region, latitude, longitude);
+
                         } else {
                             log::warn!("Failed to lookup ipinfo for {}", entry.ip);
                         }
