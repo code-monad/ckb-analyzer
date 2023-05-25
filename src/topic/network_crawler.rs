@@ -517,10 +517,10 @@ impl P2PServiceProtocol for NetworkCrawler {
                             let entry = crate::entry::IpInfo {
                                 network: entry.network,
                                 ip,
-                                country,
-                                city,
+                                country: country.replace("'", "''"),
+                                city: city.replace("'", "''"),
                                 region,
-                                company: company.map(|company| company.name).unwrap_or_default(),
+                                company: company.map(|company| company.name).unwrap_or_default().replace("'", "''"),
                             };
                             let raw_query = format!(
                                 "INSERT INTO {}.ipinfo(ip, country, city, region, company) \
