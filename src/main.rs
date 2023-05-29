@@ -136,7 +136,7 @@ async fn main() {
                 }
             }
             _ => {
-                ckb_testkit::error!("Unknown topic \"{}\"", topic);
+                log::error!("Unknown topic \"{}\"", topic);
                 unreachable!()
             }
         }
