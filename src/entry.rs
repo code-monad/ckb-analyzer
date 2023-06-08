@@ -13,7 +13,7 @@ pub struct Peer {
     pub ip: String,
     pub n_reachable: i32,
     pub address: String,
-    pub node_type: String,
+    pub node_type: u8,
 }
 
 /// IP info

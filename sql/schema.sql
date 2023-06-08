@@ -26,7 +26,7 @@
         ip                  TEXT            NOT NULL,
         n_reachable         INT             NOT NULL DEFAULT 0,
         address             TEXT            NULL,
-        node_type           TEXT            NOT NULL DEFAULT UNKNOWN,
+        node_type           INT             NOT NULL DEFAULT 0,
     );
     ALTER TABLE ckb.peer ADD CONSTRAINT unique_address UNIQUE (address);
 

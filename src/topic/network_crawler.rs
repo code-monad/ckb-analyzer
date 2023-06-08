@@ -498,12 +498,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                                     ip: ip.clone(),
                                     n_reachable: n_reachable as i32,
                                     address: peer_info.address.to_string().clone(),
-                                    node_type: match peer_info.is_full_node  {
-                                        0 => "Unknown",
-                                        1 => "Full",
-                                        2 => "Light",
-                                        _ => "Unknown",
-                                    }.to_string(),
+                                    node_type: peer_info.is_full_node,
                                 };
                                 entries.push(entry);
                             }
@@ -514,7 +509,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                 for entry in entries.iter() {
                     let raw_query = format!(
                         "INSERT INTO {}.peer(time, version, ip, n_reachable, address, node_type) \
-                        VALUES ('{}', '{}', '{}', {}, '{}', '{}') \
+                        VALUES ('{}', '{}', '{}', {}, '{}', {}) \
                         ON CONFLICT (address) DO UPDATE SET time = excluded.time, n_reachable = excluded.n_reachable",
                         entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address, entry.node_type,
                     );
