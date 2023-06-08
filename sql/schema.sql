@@ -21,11 +21,12 @@
 
     CREATE TABLE IF NOT EXISTS ckb.peer (
         id                  SERIAL,
-        time                TIMESTAMPTZ       NOT NULL,
+        time                TIMESTAMPTZ     NOT NULL,
         version             TEXT            NOT NULL,
         ip                  TEXT            NOT NULL,
         n_reachable         INT             NOT NULL DEFAULT 0,
-        address             TEXT            NULL
+        address             TEXT            NULL,
+        node_type           TEXT            NOT NULL DEFAULT UNKNOWN,
     );
     ALTER TABLE ckb.peer ADD CONSTRAINT unique_address UNIQUE (address);
 
@@ -35,8 +36,12 @@
         city                TEXT             NULL,
         loc                 TEXT             NULL,
         region              TEXT             NULL,
-        company             TEXT             NULL
+        company             TEXT             NULL,
+        latitude            NUMERIC(9, 6)    NULL,
+        longtitude          NUMERIC(9, 6)    NULL
     );
+
+
     CREATE TABLE IF NOT EXISTS ckb.block (
         time                        TIMESTAMP       NOT NULL,
         number                      BIGINT          NOT NULL,

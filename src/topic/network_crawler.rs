@@ -114,6 +114,7 @@ pub struct PeerInfo {
     last_seen_time: Option<Instant>,
     reachable: HashSet<Ip>,
     client_version: String,
+    is_full_node: u8, // 0: unknown, 1: full node, 2: not full node
 }
 
 impl Clone for NetworkCrawler {
@@ -161,6 +162,7 @@ impl NetworkCrawler {
                                 last_seen_time: Default::default(),
                                 reachable: Default::default(),
                                 client_version: Default::default(),
+                                is_full_node: 1,
                             },
                         )
                     })
@@ -211,7 +213,15 @@ impl NetworkCrawler {
                             identify_payload.client_version().unpack();
                         let client_version =
                             String::from_utf8_lossy(&client_version_vec).to_string();
+
                         let client_name_vec: Vec<u8> = identify_payload.name().unpack();
+
+                        let client_flag: u64 =  identify_payload.flag().unpack();
+
+                        // protocol is private mod in ckb, use the bitflag map directly
+                        // since a light node can't provide LIGHT_CLIENT serv but full node can, use this as a workaround
+                        let is_full_node = (client_flag & 0b10000) == 0b10000;
+
                         log::info!(
                             "NetworkCrawler received IdentifyMessage, address: {}, time: {:?}",
                             context.session.address,
@@ -231,6 +241,7 @@ impl NetworkCrawler {
                                     last_seen_time: Default::default(),
                                     reachable: Default::default(),
                                     client_version: Default::default(),
+                                    is_full_node: if is_full_node { 1 } else { 2 },
                                 });
                             entry.client_version = client_version;
                             entry.last_seen_time = Some(Instant::now());
@@ -289,6 +300,7 @@ impl NetworkCrawler {
                                         last_seen_time: Default::default(),
                                         reachable: Default::default(),
                                         client_version: Default::default(),
+                                        is_full_node: 0, // Can't get this, leave unknown
                                     });
                                 for node in discovery_nodes.items() {
                                     for address in node.addresses() {
@@ -354,6 +366,7 @@ impl NetworkCrawler {
                                 last_seen_time: Default::default(),
                                 reachable: Default::default(),
                                 client_version: Default::default(),
+                                is_full_node: 0, // can't get this, leave unknown
                             });
                         entry.last_seen_time = Some(Instant::now());
                         if let Ok(version_map) = self.observed_version.read() {
@@ -485,6 +498,12 @@ impl P2PServiceProtocol for NetworkCrawler {
                                     ip: ip.clone(),
                                     n_reachable: n_reachable as i32,
                                     address: peer_info.address.to_string().clone(),
+                                    node_type: match peer_info.is_full_node  {
+                                        0 => "Unknown",
+                                        1 => "Full",
+                                        2 => "Light",
+                                        _ => "Unknown",
+                                    }.to_string(),
                                 };
                                 entries.push(entry);
                             }
@@ -494,10 +513,10 @@ impl P2PServiceProtocol for NetworkCrawler {
 
                 for entry in entries.iter() {
                     let raw_query = format!(
-                        "INSERT INTO {}.peer(time, version, ip, n_reachable, address) \
-                        VALUES ('{}', '{}', '{}', {}, '{}') \
+                        "INSERT INTO {}.peer(time, version, ip, n_reachable, address, node_type) \
+                        VALUES ('{}', '{}', '{}', {}, '{}', '{}') \
                         ON CONFLICT (address) DO UPDATE SET time = excluded.time, n_reachable = excluded.n_reachable",
-                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address,
+                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address, entry.node_type,
                     );
                     self.query_sender.send(raw_query).unwrap();
                 }
