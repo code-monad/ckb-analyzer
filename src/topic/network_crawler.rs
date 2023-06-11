@@ -34,6 +34,7 @@ use p2p::error::{DialerErrorKind, SendErrorKind};
 use tokio::runtime::Handle;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
 
+
 // TODO Adjust the parameters
 const DIAL_ONLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(1);
 const PRUNE_OFFLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(30 * 60);
@@ -498,6 +499,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                                     ip: ip.clone(),
                                     n_reachable: n_reachable as i32,
                                     address: peer_info.address.to_string().clone(),
+                                    peer_id: peer_info.address.to_string().split('/').collect::<Vec<&str>>().last().unwrap_or(&"").to_string(),
                                     node_type: peer_info.is_full_node,
                                 };
                                 entries.push(entry);
@@ -508,10 +510,10 @@ impl P2PServiceProtocol for NetworkCrawler {
 
                 for entry in entries.iter() {
                     let raw_query = format!(
-                        "INSERT INTO {}.peer(time, version, ip, n_reachable, address, node_type) \
-                        VALUES ('{}', '{}', '{}', {}, '{}', {}) \
+                        "INSERT INTO {}.peer(time, version, ip, n_reachable, address, peer_id, node_type) \
+                        VALUES ('{}', '{}', '{}', {}, '{}', '{}', {}) \
                         ON CONFLICT (address) DO UPDATE SET time = excluded.time, n_reachable = excluded.n_reachable",
-                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address, entry.node_type,
+                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address, entry.peer_id, entry.node_type,
                     );
                     self.query_sender.send(raw_query).unwrap();
                 }
@@ -536,23 +538,26 @@ impl P2PServiceProtocol for NetworkCrawler {
                                 region,
                                 company: company.map(|company| company.name).unwrap_or_default().replace("'", "''"),
                             };
+
+                            let mut lat_lon = loc.split(',');
+                            // Parse each part to f64, providing a default if the value can't be parsed
+                            let latitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
+                            let longitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
+
                             let raw_query = format!(
-                                "INSERT INTO {}.ipinfo(ip, country, city, region, company) \
-                                VALUES ('{}', '{}', '{}', '{}', '{}') ON CONFLICT DO NOTHING",
+                                "INSERT INTO {}.ipinfo(ip, country, city, region, company, latitude, longitude) \
+                                VALUES ('{}', '{}', '{}', '{}', '{}', '{}', '{}') ON CONFLICT DO NOTHING",
                                 entry.network,
                                 entry.ip,
                                 entry.country,
                                 entry.city,
                                 entry.region,
                                 entry.company,
+                                latitude,
+                                longitude,
                             );
                             self.known_ips.insert(entry.ip);
                             self.query_sender.send(raw_query).unwrap();
-
-                            let mut lat_lon = loc.split(',');
-                            // Parse each part to f64, providing a default if the value can't be parsed
-                            let latitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
-                            let longitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
 
                             let query = format!("INSERT INTO common_info.lat_info (city, country, state1, latitude, longitude)
                             VALUES ({}, {}, {}, {}, {}) ON CONFLICT (city, country) DO NOTHING", entry.city, entry.country, entry.region, latitude, longitude);

@@ -26,7 +26,8 @@
         ip                  TEXT            NOT NULL,
         n_reachable         INT             NOT NULL DEFAULT 0,
         address             TEXT            NULL,
-        node_type           INT             NOT NULL DEFAULT 0,
+        peer_id             TEXT            NULL,
+        node_type           INT             NOT NULL DEFAULT 0
     );
     ALTER TABLE ckb.peer ADD CONSTRAINT unique_address UNIQUE (address);
 
@@ -38,7 +39,7 @@
         region              TEXT             NULL,
         company             TEXT             NULL,
         latitude            NUMERIC(9, 6)    NULL,
-        longtitude          NUMERIC(9, 6)    NULL
+        longitude           NUMERIC(9, 6)    NULL
     );
 
 
@@ -160,11 +161,13 @@
 
     CREATE TABLE IF NOT EXISTS ckb_testnet.peer (
         id                  SERIAL,
-        time                TIMESTAMPTZ       NOT NULL,
+        time                TIMESTAMPTZ     NOT NULL,
         version             TEXT            NOT NULL,
         ip                  TEXT            NOT NULL,
         n_reachable         INT             NOT NULL DEFAULT 0,
-        address             TEXT            NULL
+        address             TEXT            NULL,
+        peer_id             TEXT            NULL,
+        node_type           INT             NOT NULL DEFAULT 0
     );
     ALTER TABLE ckb_testnet.peer ADD CONSTRAINT unique_address UNIQUE (address);
 
@@ -174,7 +177,9 @@
         city                TEXT            NULL,
         loc                 TEXT            NULL,
         region              TEXT            NULL,
-        company             TEXT            NULL
+        company             TEXT            NULL,
+        latitude            NUMERIC(9, 6)    NULL,
+        longitude           NUMERIC(9, 6)    NULL
     );
     CREATE TABLE IF NOT EXISTS ckb_testnet.block (
         time                        TIMESTAMP       NOT NULL,
@@ -294,11 +299,13 @@
 
     CREATE TABLE IF NOT EXISTS ckb_dev.peer (
         id                  SERIAL,
-        time                TIMESTAMPTZ       NOT NULL,
+        time                TIMESTAMPTZ     NOT NULL,
         version             TEXT            NOT NULL,
         ip                  TEXT            NOT NULL,
         n_reachable         INT             NOT NULL DEFAULT 0,
-        address             TEXT            NULL
+        address             TEXT            NULL,
+        peer_id             TEXT            NULL,
+        node_type           INT             NOT NULL DEFAULT 0
         );
     ALTER TABLE ckb_dev.peer ADD CONSTRAINT unique_address UNIQUE (address);
 
@@ -308,7 +315,9 @@
         city                TEXT            NULL,
         loc                 TEXT            NULL,
         region              TEXT            NULL,
-        company             TEXT            NULL
+        company             TEXT            NULL,
+        latitude            NUMERIC(9, 6)    NULL,
+        longitude           NUMERIC(9, 6)    NULL
         );
     CREATE TABLE IF NOT EXISTS ckb_dev.block (
         time                        TIMESTAMP       NOT NULL,
