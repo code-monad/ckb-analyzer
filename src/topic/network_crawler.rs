@@ -34,6 +34,7 @@ use p2p::error::{DialerErrorKind, SendErrorKind};
 use tokio::runtime::Handle;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
 
+
 // TODO Adjust the parameters
 const DIAL_ONLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(1);
 const PRUNE_OFFLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(30 * 60);
@@ -114,6 +115,7 @@ pub struct PeerInfo {
     last_seen_time: Option<Instant>,
     reachable: HashSet<Ip>,
     client_version: String,
+    is_full_node: u8, // 0: unknown, 1: full node, 2: not full node
 }
 
 impl Clone for NetworkCrawler {
@@ -161,6 +163,7 @@ impl NetworkCrawler {
                                 last_seen_time: Default::default(),
                                 reachable: Default::default(),
                                 client_version: Default::default(),
+                                is_full_node: 1,
                             },
                         )
                     })
@@ -211,7 +214,15 @@ impl NetworkCrawler {
                             identify_payload.client_version().unpack();
                         let client_version =
                             String::from_utf8_lossy(&client_version_vec).to_string();
+
                         let client_name_vec: Vec<u8> = identify_payload.name().unpack();
+
+                        let client_flag: u64 =  identify_payload.flag().unpack();
+
+                        // protocol is private mod in ckb, use the bitflag map directly
+                        // since a light node can't provide LIGHT_CLIENT serv but full node can, use this as a workaround
+                        let is_full_node = (client_flag & 0b10000) == 0b10000;
+
                         log::info!(
                             "NetworkCrawler received IdentifyMessage, address: {}, time: {:?}",
                             context.session.address,
@@ -231,6 +242,7 @@ impl NetworkCrawler {
                                     last_seen_time: Default::default(),
                                     reachable: Default::default(),
                                     client_version: Default::default(),
+                                    is_full_node: if is_full_node { 1 } else { 2 },
                                 });
                             entry.client_version = client_version;
                             entry.last_seen_time = Some(Instant::now());
@@ -289,6 +301,7 @@ impl NetworkCrawler {
                                         last_seen_time: Default::default(),
                                         reachable: Default::default(),
                                         client_version: Default::default(),
+                                        is_full_node: 0, // Can't get this, leave unknown
                                     });
                                 for node in discovery_nodes.items() {
                                     for address in node.addresses() {
@@ -354,6 +367,7 @@ impl NetworkCrawler {
                                 last_seen_time: Default::default(),
                                 reachable: Default::default(),
                                 client_version: Default::default(),
+                                is_full_node: 0, // can't get this, leave unknown
                             });
                         entry.last_seen_time = Some(Instant::now());
                         if let Ok(version_map) = self.observed_version.read() {
@@ -485,6 +499,8 @@ impl P2PServiceProtocol for NetworkCrawler {
                                     ip: ip.clone(),
                                     n_reachable: n_reachable as i32,
                                     address: peer_info.address.to_string().clone(),
+                                    peer_id: peer_info.address.to_string().split('/').collect::<Vec<&str>>().last().unwrap_or(&"").to_string(),
+                                    node_type: peer_info.is_full_node,
                                 };
                                 entries.push(entry);
                             }
@@ -494,10 +510,10 @@ impl P2PServiceProtocol for NetworkCrawler {
 
                 for entry in entries.iter() {
                     let raw_query = format!(
-                        "INSERT INTO {}.peer(time, version, ip, n_reachable, address) \
-                        VALUES ('{}', '{}', '{}', {}, '{}') \
+                        "INSERT INTO {}.peer(time, version, ip, n_reachable, address, peer_id, node_type) \
+                        VALUES ('{}', '{}', '{}', {}, '{}', '{}', {}) \
                         ON CONFLICT (address) DO UPDATE SET time = excluded.time, n_reachable = excluded.n_reachable",
-                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address,
+                        entry.network, entry.time, entry.version, entry.ip, entry.n_reachable, entry.address, entry.peer_id, entry.node_type,
                     );
                     self.query_sender.send(raw_query).unwrap();
                 }
@@ -522,23 +538,26 @@ impl P2PServiceProtocol for NetworkCrawler {
                                 region,
                                 company: company.map(|company| company.name).unwrap_or_default().replace("'", "''"),
                             };
+
+                            let mut lat_lon = loc.split(',');
+                            // Parse each part to f64, providing a default if the value can't be parsed
+                            let latitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
+                            let longitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
+
                             let raw_query = format!(
-                                "INSERT INTO {}.ipinfo(ip, country, city, region, company) \
-                                VALUES ('{}', '{}', '{}', '{}', '{}') ON CONFLICT DO NOTHING",
+                                "INSERT INTO {}.ipinfo(ip, country, city, region, company, latitude, longitude) \
+                                VALUES ('{}', '{}', '{}', '{}', '{}', '{}', '{}') ON CONFLICT DO NOTHING",
                                 entry.network,
                                 entry.ip,
                                 entry.country,
                                 entry.city,
                                 entry.region,
                                 entry.company,
+                                latitude,
+                                longitude,
                             );
                             self.known_ips.insert(entry.ip);
                             self.query_sender.send(raw_query).unwrap();
-
-                            let mut lat_lon = loc.split(',');
-                            // Parse each part to f64, providing a default if the value can't be parsed
-                            let latitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
-                            let longitude: f64 = lat_lon.next().and_then(|s| f64::from_str(s).ok()).unwrap_or_default();
 
                             let query = format!("INSERT INTO common_info.lat_info (city, country, state1, latitude, longitude)
                             VALUES ({}, {}, {}, {}, {}) ON CONFLICT (city, country) DO NOTHING", entry.city, entry.country, entry.region, latitude, longitude);
