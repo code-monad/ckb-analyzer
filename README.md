@@ -2,7 +2,7 @@
 
 The purpose of CKB Node Probe is to facilitate observation of the CKB network.
 
-CKB Node Probe acts as a metrics agent and stores the data into [Timescaledb](https://docs.timescale.com/), then visualize using [Marci](https://github.com/code-monad/Marci.git).
+CKB Node Probe acts as a metrics agent and stores the data into [Timescaledb](https://docs.timescale.com/), then exposed an API using [Marci](https://github.com/code-monad/Marci.git).
 
 ## Getting Started
 
