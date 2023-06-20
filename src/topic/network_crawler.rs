@@ -37,7 +37,8 @@ use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder
 
 // TODO Adjust the parameters
 const DIAL_ONLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(1);
-const PRUNE_OFFLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(30 * 60);
+const PRUNE_OFFLINE_ADDRESSES_INTERVAL: Duration = Duration::from_secs(60 * 60 * 24);
+
 const DISCONNECT_TIMEOUT_SESSION_INTERVAL: Duration = Duration::from_secs(10);
 const POSTGRES_ONLINE_ADDRESS_INTERVAL: Duration = Duration::from_secs(60);
 const DIAL_ONLINE_ADDRESSES_TOKEN: u64 = 1;
@@ -246,6 +247,11 @@ impl NetworkCrawler {
                                 });
                             entry.client_version = client_version;
                             entry.last_seen_time = Some(Instant::now());
+                            // remove this from dial pool
+                            if let Ok(mut observed_addresses) = self.observed_addresses.write() {
+                                observed_addresses.remove(&context.session.address);
+                            }
+
                         }
                     }
                     Err(err) => {
@@ -284,36 +290,38 @@ impl NetworkCrawler {
                                                 "NetworkCrawler observed new address: {}",
                                                 addr
                                             );
-
-                                        // insert default 1 or increment
-                                        *observed_addresses.entry(addr).or_insert(1) += 1;
-                                    }
-                                }
-                            }
-                        }
-
-                        {
-                            if let Ok(mut online) = self.online.write() {
-                                let entry = online
-                                    .entry(addr_to_ip(&context.session.address))
-                                    .or_insert_with(|| PeerInfo {
-                                        address: context.session.address.clone(),
-                                        last_seen_time: Default::default(),
-                                        reachable: Default::default(),
-                                        client_version: Default::default(),
-                                        is_full_node: 0, // Can't get this, leave unknown
-                                    });
-                                for node in discovery_nodes.items() {
-                                    for address in node.addresses() {
-                                        if let Ok(addr) =
-                                            Multiaddr::try_from(address.raw_data().to_vec())
-                                        {
-                                            entry.reachable.insert(addr_to_ip(&addr));
+                                        if let Ok(online) = self.online.write() {
+                                            if online.contains_key(&addr_to_ip(&addr)) {
+                                                // do not perform action to online nodes
+                                                continue
+                                            } else {
+                                                // insert default 1 or increment
+                                                *observed_addresses.entry(addr).or_insert(1) += 1;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
+
+                        // NOTE: We do not need reachable info now, the commented code is also fixed to avoid unstopped entry adding
+                        //{
+                        //    if let Ok(mut online) = self.online.write() {
+                        //        if online.contains_key(&addr_to_ip(&context.session.address)) {
+                        //            let entry = online.entry(addr_to_ip(&context.session.address)).and_modify(|peer_info|
+                        //                for node in discovery_nodes.items() {
+                        //                    for address in node.addresses() {
+                        //                        if let Ok(addr) =
+                        //                            Multiaddr::try_from(address.raw_data().to_vec())
+                        //                        {
+                        //                            peer_info.reachable.insert(addr_to_ip(&addr));
+                        //                        }
+                        //                    }
+                        //                }
+                        //            );
+                        //        }
+                        //    }
+                        //}
                     }
                     packed::DiscoveryPayloadUnion::GetNodes(_discovery_get_nodes) => {
                         // discard
@@ -426,6 +434,11 @@ impl P2PServiceProtocol for NetworkCrawler {
             DIAL_ONLINE_ADDRESSES_TOKEN => {
                 // context.remove_service_notify();
                 // context.set_service_notify();
+                if let Ok(observed_addresses) = self.observed_addresses.read() {
+                    if observed_addresses.is_empty() {
+                        return
+                    }
+                }
                 let mut rng = thread_rng();
                 let mut dial_res = None;
                 let mut addr = None;
@@ -570,6 +583,17 @@ impl P2PServiceProtocol for NetworkCrawler {
             }
             PRUNE_OFFLINE_ADDRESSES_TOKEN => {
                 // TODO: prune offline addresses
+                if let Ok(online) = self.online.read() {
+                    if online.is_empty() {
+                        return
+                    }
+                }
+                if let Ok(mut online) = self.online.write() {
+                    online.retain(|&_, peer| { // remove offline addresses
+                        !peer.client_version.is_empty() || peer.last_seen_time.unwrap().elapsed() <= ADDRESS_TIMEOUT
+                    });
+                }
+
             }
             _ => unreachable!(),
         }
