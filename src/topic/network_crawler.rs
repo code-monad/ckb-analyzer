@@ -583,12 +583,8 @@ impl P2PServiceProtocol for NetworkCrawler {
             }
             PRUNE_OFFLINE_ADDRESSES_TOKEN => {
                 // TODO: prune offline addresses
-                if let Ok(online) = self.online.read() {
-                    if online.is_empty() {
-                        return
-                    }
-                }
                 if let Ok(mut online) = self.online.write() {
+                    log::warn!("Removing offline addresses!!");
                     online.retain(|&_, peer| { // remove offline addresses
                         !peer.client_version.is_empty() || peer.last_seen_time.unwrap().elapsed() <= ADDRESS_TIMEOUT
                     });
