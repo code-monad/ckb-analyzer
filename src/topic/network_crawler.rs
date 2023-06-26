@@ -30,6 +30,7 @@ use std::ops::Mul;
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
+use log::log;
 use p2p::error::{DialerErrorKind, SendErrorKind};
 use tokio::runtime::Handle;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
@@ -583,12 +584,8 @@ impl P2PServiceProtocol for NetworkCrawler {
             }
             PRUNE_OFFLINE_ADDRESSES_TOKEN => {
                 // TODO: prune offline addresses
-                if let Ok(online) = self.online.read() {
-                    if online.is_empty() {
-                        return
-                    }
-                }
                 if let Ok(mut online) = self.online.write() {
+                    log::warn!("Removing offline addresses!!");
                     online.retain(|&_, peer| { // remove offline addresses
                         !peer.client_version.is_empty() || peer.last_seen_time.unwrap().elapsed() <= ADDRESS_TIMEOUT
                     });
