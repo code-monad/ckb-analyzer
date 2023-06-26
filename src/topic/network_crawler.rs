@@ -30,7 +30,6 @@ use std::ops::Mul;
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
-use log::log;
 use p2p::error::{DialerErrorKind, SendErrorKind};
 use tokio::runtime::Handle;
 use tokio_util::codec::{length_delimited::LengthDelimitedCodec, Decoder, Encoder};
