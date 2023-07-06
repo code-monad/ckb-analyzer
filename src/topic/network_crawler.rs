@@ -287,9 +287,13 @@ impl NetworkCrawler {
                                             );
                                         if let Ok(online) = self.online.write() {
                                             if online.contains_key(&addr_to_ip(&addr)) &&
-                                                online.get(&addr_to_ip(&addr)).unwrap().last_seen_time.unwrap().elapsed() < Duration::from_secs(60) {
-                                                // do not perform action to online nodes
-                                                continue
+                                                !bootnodes(self.network_type).contains(&addr) {
+                                                match online.get(&addr_to_ip(&addr)).unwrap().last_seen_time {
+                                                    Some(last_seen_time) => if last_seen_time.elapsed() < Duration::from_secs(60) {
+                                                        continue
+                                                    },
+                                                    None => { *observed_addresses.entry(addr).or_insert(1) += 1 },
+                                                }
                                             } else {
                                                 // insert default 1 or increment
                                                 *observed_addresses.entry(addr).or_insert(1) += 1;
