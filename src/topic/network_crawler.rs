@@ -286,7 +286,8 @@ impl NetworkCrawler {
                                                 addr
                                             );
                                         if let Ok(online) = self.online.write() {
-                                            if online.contains_key(&addr_to_ip(&addr)) {
+                                            if online.contains_key(&addr_to_ip(&addr)) &&
+                                                online.get(&addr_to_ip(&addr)).unwrap().last_seen_time.unwrap().elapsed() < Duration::from_secs(60) {
                                                 // do not perform action to online nodes
                                                 continue
                                             } else {
@@ -452,6 +453,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                         .get_session(random_address.0)
                         .is_none()
                     {
+                        log::debug!("Try dial {}", random_address.0.clone());
                         dial_res = Some(context.dial(random_address.0.clone(), P2PTargetProtocol::All));
                         addr = Some(random_address.0.clone());
                     }
