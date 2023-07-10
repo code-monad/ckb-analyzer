@@ -247,11 +247,6 @@ impl NetworkCrawler {
                                 });
                             entry.client_version = client_version;
                             entry.last_seen_time = Some(Instant::now());
-                            // remove this from dial pool
-                            if let Ok(mut observed_addresses) = self.observed_addresses.write() {
-                                observed_addresses.remove(&context.session.address);
-                            }
-
                         }
                     }
                     Err(err) => {
@@ -291,9 +286,14 @@ impl NetworkCrawler {
                                                 addr
                                             );
                                         if let Ok(online) = self.online.write() {
-                                            if online.contains_key(&addr_to_ip(&addr)) {
-                                                // do not perform action to online nodes
-                                                continue
+                                            if online.contains_key(&addr_to_ip(&addr)) &&
+                                                !bootnodes(self.network_type).contains(&addr) {
+                                                match online.get(&addr_to_ip(&addr)).unwrap().last_seen_time {
+                                                    Some(last_seen_time) => if last_seen_time.elapsed() < Duration::from_secs(60) {
+                                                        continue
+                                                    },
+                                                    None => { *observed_addresses.entry(addr).or_insert(1) += 1 },
+                                                }
                                             } else {
                                                 // insert default 1 or increment
                                                 *observed_addresses.entry(addr).or_insert(1) += 1;
@@ -457,6 +457,7 @@ impl P2PServiceProtocol for NetworkCrawler {
                         .get_session(random_address.0)
                         .is_none()
                     {
+                        log::debug!("Try dial {}", random_address.0.clone());
                         dial_res = Some(context.dial(random_address.0.clone(), P2PTargetProtocol::All));
                         addr = Some(random_address.0.clone());
                     }
@@ -583,12 +584,12 @@ impl P2PServiceProtocol for NetworkCrawler {
             }
             PRUNE_OFFLINE_ADDRESSES_TOKEN => {
                 // TODO: prune offline addresses
-                if let Ok(mut online) = self.online.write() {
-                    log::warn!("Removing offline addresses!!");
-                    online.retain(|&_, peer| { // remove offline addresses
-                        !peer.client_version.is_empty() || peer.last_seen_time.unwrap().elapsed() <= ADDRESS_TIMEOUT
-                    });
-                }
+                // if let Ok(mut online) = self.online.write() {
+                //     log::warn!("Removing offline addresses!!");
+                //     online.retain(|&_, peer| { // remove offline addresses
+                //         !peer.client_version.is_empty() || peer.last_seen_time.unwrap().elapsed() <= ADDRESS_TIMEOUT
+                //     });
+                // }
 
             }
             _ => unreachable!(),
