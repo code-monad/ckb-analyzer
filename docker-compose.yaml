@@ -21,19 +21,6 @@ services:
       timeout: 5s
       retries: 5
     restart: always
-    labels:
-      ofelia.enabled: "true"
-      ofelia.job-exec.db_update_cron.schedule: "@monthly"
-      ofelia.job-exec.db_update_cron.command: "/usr/bin/import_ip_data | tee -a /var/log/import_ip_data.log"
-
-  ofelia:
-    container_name: job-trigger
-    image: mcuadros/ofelia:latest
-    depends_on:
-      - postgresql
-    command: daemon --docker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   ckb-analyzer:
     container_name: ckb-analyzer-networks
