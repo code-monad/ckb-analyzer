@@ -10,7 +10,7 @@ services:
       - POSTGRES_DB=ckb
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - DOWNLOAD_PROXY= #socks5://192.168.10.10:1080 # You can set proxy if you have trouble downloading files from Github
+      #- DOWNLOAD_PROXY= #socks5://192.168.10.10:1080 # You can set proxy if you have trouble downloading files from Github
     ports:
       - "5432:5432"
     volumes:
